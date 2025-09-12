@@ -1,13 +1,15 @@
 import inspect
 from typing import Callable
 from llm_query.adapters import kafka_event_publisher
+from llm_query.adapters.ollama import AbstractLLMClient
 from llm_query.service_layer import handlers, messagebus
 
 def bootstrap(
+    ollama: AbstractLLMClient = None,
     publish: Callable = kafka_event_publisher.publish,
 ) -> messagebus.MessageBus:
 
-    dependencies = {"publish": publish}
+    dependencies = {"publish": publish, "ollama": ollama}
     injected_event_handlers = {
         event_type: [
             inject_dependencies(handler, dependencies)
@@ -24,7 +26,6 @@ def bootstrap(
         event_handlers=injected_event_handlers,
         command_handlers=injected_command_handlers,
     )
-
 
 def inject_dependencies(handler, dependencies):
     params = inspect.signature(handler).parameters

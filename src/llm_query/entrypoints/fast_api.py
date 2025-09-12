@@ -12,3 +12,6 @@ bus = bootstrap.bootstrap()
 async def generate_response(request: UserQuery):
     pass
 
+@app.route("/query-stream")
+async def generate_response_stream(request: UserQuery):
+    pass

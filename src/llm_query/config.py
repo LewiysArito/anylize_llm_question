@@ -16,10 +16,17 @@ def get_api_url():
     
     return f"{"https" if secure else "http"}://{host}:{port}"
 
-def get_kafka_config():
+def get_kafka_url():
     host = os.environ.get("KAFKA_HOST", "localhost")
-    port = 63791 if host == "localhost" else 6379
-    return dict(host=host, port=port)
+    port = os.environ.get("KAFKA_PORT",  9092)
+    value = os.environ.get("KAFKA_SECURE", False)
+    
+    try:
+        secure = convert_env_value_to_bool(value)
+    except Exception as e:  
+        raise ConfigError(str(e))
+    
+    return f"{"https" if secure else "http"}://{host}:{port}" 
 
 def get_llm_url_and_max_token():
     host = os.environ.get("LLAMA_HOST", "localshost")
