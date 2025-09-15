@@ -13,7 +13,7 @@ class LLMQueryError(Exception):
 
 class AbstractLLMClient(abc.ABC):
     @abc.abstractmethod
-    def generate(self, 
+    async def generate(self, 
         model: str,
         prompt: str,
         temperature: float = 0.7,
@@ -21,7 +21,7 @@ class AbstractLLMClient(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def generate_with_stream(self, 
+    async def generate_with_stream(self, 
         model: str,
         prompt: str,
         temperature: float,

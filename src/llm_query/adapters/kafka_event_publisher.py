@@ -1,17 +1,17 @@
 import json
 import abc
 import logging
-from typing import Optional
+from typing import List, Optional
 import uuid
+import asyncio
+
 from dataclasses import asdict
 from aiokafka import AIOKafkaProducer
 from aiokafka.errors import KafkaError
-
 from llm_query import config
 from llm_query.domain import events
 
 DEFAULT_BASE_URL = config.get_kafka_url()
-
 logger = logging.getLogger(__name__)
 
 class AbstractPublisher(abc.ABC):
@@ -19,12 +19,14 @@ class AbstractPublisher(abc.ABC):
     
     async def start(self):
         raise NotImplementedError
-    async def publish(self, topic: str, event: events.Event):
+    async def publish_one(self, topic: str, event: events.Event):
+        raise NotImplementedError
+    async def publish_many(self, topic: str, events: List[events.Event]):
         raise NotImplementedError
     async def stop(self):
         raise NotImplementedError
 
-class KafkaPublisher:
+class KafkaPublisher(AbstractPublisher):
     def __init__(self, bootstrap_servers: str = DEFAULT_BASE_URL):
         self.bootstrap_servers = bootstrap_servers
         self.producer: Optional[AIOKafkaProducer] = None
@@ -45,9 +47,8 @@ class KafkaPublisher:
             await self.producer.stop()
             logger.info("Kafka producer stopped")
     
-    async def publish(self, topic: str, event:events.Event):
+    async def publish_one(self, topic: str, event:events.Event):
         await self.start()
-        
         try:
             key = event.id or str(uuid.uuid4())
             
@@ -58,7 +59,6 @@ class KafkaPublisher:
             )
             
             logger.info(f"Message published to {topic} with key {key}")
-            return key
             
         except KafkaError as e:
             logger.error(f"Failed to publish to {topic}: {e}")
@@ -66,3 +66,36 @@ class KafkaPublisher:
         except Exception as e:
             logger.error(f"Unexpected error publishing to {topic}: {e}")
             raise
+
+    async def publish_many(self, topic: str, events:List[events.Event])->List[uuid.UUID]:
+        await self.start()
+        try:
+            send_messages  = []
+            for event in events:
+                key = event.id or str(uuid.uuid4())
+                
+                send_message = await self.producer.send(
+                    topic=topic,
+                    key=key,
+                    value=asdict(event)
+                )
+                
+                logger.info(f"Message published to {topic} with key {key}")
+                send_messages.append(key)
+            
+            await asyncio.gather(*send_messages)
+        
+        except KafkaError as e:
+            logger.error(f"Failed to publish to {topic}: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error publishing to {topic}: {e}")
+            raise
+    
+    async def __aexit__(self,exc_type, exc_val, exc_tb):
+        await self.stop()
+    
+    async def __aenter__(self):
+        await self.start()
+        return self
+    

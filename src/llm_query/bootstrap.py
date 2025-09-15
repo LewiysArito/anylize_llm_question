@@ -1,15 +1,20 @@
 import inspect
-from typing import Callable
-from llm_query.adapters import kafka_event_publisher
-from llm_query.adapters.ollama import AbstractLLMClient
+from llm_query.adapters.kafka_event_publisher import AIOKafkaProducer, KafkaPublisher
+from llm_query.adapters.ollama import AbstractLLMClient, OllamaQuery
 from llm_query.service_layer import handlers, messagebus
 
 def bootstrap(
     ollama: AbstractLLMClient = None,
-    publish: Callable = kafka_event_publisher.publish,
-) -> messagebus.MessageBus:
+    publisher: AIOKafkaProducer = None,
+) -> messagebus.AsyncMessageBus:
 
-    dependencies = {"publish": publish, "ollama": ollama}
+    if ollama is None:
+        ollama = OllamaQuery()
+
+    if publisher is None:
+        publisher = KafkaPublisher()
+
+    dependencies = {"publisher": publisher, "ollama": ollama}
     injected_event_handlers = {
         event_type: [
             inject_dependencies(handler, dependencies)
