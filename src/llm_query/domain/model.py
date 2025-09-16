@@ -1,17 +1,15 @@
-import dataclasses
-from datetime import datetime
-from typing import List
-from uuid import UUID
 from __future__ import annotations
-from typing import List
+from dataclasses import dataclass
+from datetime import datetime
+from uuid import UUID
 
-@dataclasses(frozenset=True)
+@dataclass(frozen=True)
 class UserQuery:
     prompt: str
     temperature: float
     model: str
 
-@dataclasses(frozenset=True)
+@dataclass(frozen=True)
 class UserQueryAnalysisRequest:
     id: UUID
     model: str

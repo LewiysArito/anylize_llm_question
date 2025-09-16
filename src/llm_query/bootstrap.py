@@ -1,20 +1,21 @@
 import inspect
+from typing import Tuple
 from llm_query.adapters.kafka_event_publisher import AIOKafkaProducer, KafkaPublisher
 from llm_query.adapters.ollama import AbstractLLMClient, OllamaQuery
-from llm_query.service_layer import handlers, messagebus
+from llm_query.service_layer import handlers, messagebus, query_handlers, query_dispatcher
 
 def bootstrap(
-    ollama: AbstractLLMClient = None,
+    llm: AbstractLLMClient = None,
     publisher: AIOKafkaProducer = None,
-) -> messagebus.AsyncMessageBus:
+) -> Tuple[messagebus.AsyncMessageBus, query_dispatcher.QueryDispatcher]:
 
-    if ollama is None:
-        ollama = OllamaQuery()
+    if llm is None:
+        llm = OllamaQuery()
 
     if publisher is None:
         publisher = KafkaPublisher()
 
-    dependencies = {"publisher": publisher, "ollama": ollama}
+    dependencies = {"publisher": publisher, "llm": llm}
     injected_event_handlers = {
         event_type: [
             inject_dependencies(handler, dependencies)
@@ -27,10 +28,19 @@ def bootstrap(
         for command_type, handler in handlers.COMMAND_HANDLERS.items()
     }
 
-    return messagebus.MessageBus(
+    inject_query_handlers = {
+        query_type: inject_dependencies(handler, dependencies)
+        for query_type, handler in query_handlers.QUERY_HANDLERS.items()     
+    }
+
+    bus = messagebus.AsyncMessageBus(
         event_handlers=injected_event_handlers,
         command_handlers=injected_command_handlers,
     )
+
+    dispatcher = query_dispatcher.AsyncQueryDispatcher(inject_query_handlers) 
+
+    return bus, dispatcher
 
 def inject_dependencies(handler, dependencies):
     params = inspect.signature(handler).parameters
