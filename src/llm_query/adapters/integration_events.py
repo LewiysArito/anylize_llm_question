@@ -1,12 +1,13 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-class Command:
+class IntegrationEvent:
     pass
 
 @dataclass
-class UserQueryPublish(Command):
+class UserQueryPublishedEvent(IntegrationEvent):
+    event_id: str
     model: str
     ip_address: str
     raw_text: str
-    created_at: datetime
+    timestamp: datetime

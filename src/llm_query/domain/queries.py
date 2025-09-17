@@ -3,8 +3,8 @@ from dataclasses import dataclass
 class Query:
     pass
 
-@dataclass
-class GenerateResponse(Query):
+@dataclass(frozen=True)
+class GenerateLLMQuery(Query):
     prompt: str
     temperature: float
     model: str

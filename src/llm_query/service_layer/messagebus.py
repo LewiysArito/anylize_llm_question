@@ -32,7 +32,6 @@ class AsyncMessageBus:
             try:
                 logger.debug(f"handling event {event} with handler {handler}")
                 await handler(event)
-                self.queue.extend(self.uow.collect_new_events())
             except Exception:
                 logger.exception(f"Exception handling event {event}")
                 continue
@@ -42,7 +41,6 @@ class AsyncMessageBus:
         try:
             handler = self.command_handlers[type(command)]
             await handler(command)
-            self.queue.extend(self.uow.collect_new_events())
         except Exception:
             logger.exception(f"Exception handling command {command}")
             raise

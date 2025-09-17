@@ -7,7 +7,7 @@ from llm_query.service_layer import handlers, messagebus, query_handlers, query_
 def bootstrap(
     llm: AbstractLLMClient = None,
     publisher: AIOKafkaProducer = None,
-) -> Tuple[messagebus.AsyncMessageBus, query_dispatcher.QueryDispatcher]:
+) -> Tuple[messagebus.AsyncMessageBus, query_dispatcher.AsyncQueryDispatcher]:
 
     if llm is None:
         llm = OllamaQuery()

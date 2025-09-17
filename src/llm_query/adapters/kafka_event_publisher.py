@@ -9,7 +9,7 @@ from dataclasses import asdict
 from aiokafka import AIOKafkaProducer
 from aiokafka.errors import KafkaError
 from llm_query import config
-from llm_query.domain import events
+from llm_query.adapters import integration_events as int_event
 
 DEFAULT_BASE_URL = config.get_kafka_url()
 logger = logging.getLogger(__name__)
@@ -19,9 +19,9 @@ class AbstractPublisher(abc.ABC):
     
     async def start(self):
         raise NotImplementedError
-    async def publish_one(self, topic: str, event: events.Event):
+    async def publish_one(self, topic: str, event: int_event.IntegrationEvent):
         raise NotImplementedError
-    async def publish_many(self, topic: str, events: List[events.Event]):
+    async def publish_many(self, topic: str, events: List[int_event.IntegrationEvent]):
         raise NotImplementedError
     async def stop(self):
         raise NotImplementedError
@@ -47,10 +47,10 @@ class KafkaPublisher(AbstractPublisher):
             await self.producer.stop()
             logger.info("Kafka producer stopped")
     
-    async def publish_one(self, topic: str, event:events.Event):
+    async def publish_one(self, topic: str, event:int_event.IntegrationEvent):
         await self.start()
         try:
-            key = event.id or str(uuid.uuid4())
+            key = event.event_id or str(uuid.uuid4())
             
             await self.producer.send(
                 topic=topic,
@@ -67,12 +67,12 @@ class KafkaPublisher(AbstractPublisher):
             logger.error(f"Unexpected error publishing to {topic}: {e}")
             raise
 
-    async def publish_many(self, topic: str, events:List[events.Event])->List[uuid.UUID]:
+    async def publish_many(self, topic: str, events:List[int_event.IntegrationEvent])->List[uuid.UUID]:
         await self.start()
         try:
             send_messages  = []
             for event in events:
-                key = event.id or str(uuid.uuid4())
+                key = event.event_id or str(uuid.uuid4())
                 
                 send_message = await self.producer.send(
                     topic=topic,

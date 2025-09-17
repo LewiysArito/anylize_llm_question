@@ -3,8 +3,8 @@ from llm_query.domain import queries
 from llm_query.adapters import ollama
 from llm_query.domain import queries
 
-async def generate_response_handlers(
-    query: queries.GenerateResponse,
+async def handler_generate_response(
+    query: queries.GenerateLLMQuery,
     llm: ollama.AbstractLLMClient,
 )->str:
     response = await llm.generate(
@@ -16,5 +16,5 @@ async def generate_response_handlers(
     return response
 
 QUERY_HANDLERS: Dict[Type[queries.Query], Callable] = {
-    queries.GetLLMRequest: generate_response_handlers
+    queries.GenerateLLMQuery: handler_generate_response
 }
