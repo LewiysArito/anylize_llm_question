@@ -1,5 +1,5 @@
 import os
-from anylize_user_query.helpers import convert_env_value_to_bool
+from analyze_user_query.helpers import convert_env_value_to_bool
 
 class ConfigError(Exception):
     pass
@@ -37,4 +37,10 @@ def get_llm_url_and_max_token():
     return dict(base_url=base_url, max_tokens=max_tokens)
 
 def get_clickhouse_data():
-    pass
+    host = os.environ.get("CLICKHOUSE_HOST", "localhost")
+    port = os.environ.get("CLICKHOUSE_PORT", 8123)
+    username = os.environ.get("CLICKHOUSE_USERNAME", "clickhouse_user")
+    password = os.environ.get("CLICKHOUSE_PASSWORD", "clickhouse_password")
+    
+    return dict(host=host, port=port,username=username, password=password)
+

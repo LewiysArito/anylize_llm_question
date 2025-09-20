@@ -1,8 +1,8 @@
 import abc
 import logging
-from typing import Any, Dict, Optional
 import geocoder
 import asyncio
+from typing import Any, Dict, Optional
 from countryinfo import CountryInfo
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ class AbstractIpGeolocation(abc.ABC):
     async def get_country(self, ip: str) -> Optional[str]:
         raise NotImplementedError
 
-class IpInfo(AbstractIpGeolocation):
+class IpInfoService(AbstractIpGeolocation):
     
     async def get_info_by_ip(self, ip: str) -> Dict[str, Any]:
         try:

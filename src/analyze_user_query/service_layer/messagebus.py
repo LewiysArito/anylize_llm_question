@@ -2,7 +2,7 @@
 from __future__ import annotations
 import logging
 from typing import Callable, Dict, List, Union, Type
-from anylize_user_query.domain import commands, events
+from analyze_user_query.domain import commands, events
 
 logger = logging.getLogger(__name__)
 Message = Union[commands.Command, events.Event]

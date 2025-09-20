@@ -1,5 +1,5 @@
 from typing import Callable, Dict, Type
-from anylize_user_query.domain import queries
+from analyze_user_query.domain import queries
 
 class AsyncQueryDispatcher:
     def __init__(self, query_handlers: Dict[Type[queries.Query], Callable]):

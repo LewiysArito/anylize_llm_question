@@ -1,15 +1,14 @@
 import inspect
 from typing import Tuple
-from anylize_user_query.service_layer import handlers, messagebus, query_handlers, query_dispatcher
+from analyze_user_query.service_layer import handlers, messagebus, query_handlers, query_dispatcher
+from analyze_user_query.adapters.http_ip_geolocation import AbstractIpGeolocation, IpInfoService 
 
 def bootstrap(
+    ip_geolocation: AbstractIpGeolocation = None,
 ) -> Tuple[messagebus.AsyncMessageBus, query_dispatcher.AsyncQueryDispatcher]:
 
-    # if llm is None:
-    #     llm = OllamaQuery()
-
-    # if publisher is None:
-    #     publisher = KafkaPublisher()
+    if ip_geolocation is None:
+        ip_geolocation = IpInfoService()
 
     dependencies = {}
     injected_event_handlers = {
