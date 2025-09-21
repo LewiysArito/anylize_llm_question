@@ -16,13 +16,18 @@ logger = logging.getLogger(__name__)
 
 class AbstractPublisher(abc.ABC):
     @abc.abstractmethod
-    
     async def start(self):
         raise NotImplementedError
+    
+    @abc.abstractmethod
     async def publish_one(self, topic: str, event: int_event.IntegrationEvent):
         raise NotImplementedError
+    
+    @abc.abstractmethod
     async def publish_many(self, topic: str, events: List[int_event.IntegrationEvent]):
         raise NotImplementedError
+    
+    @abc.abstractmethod
     async def stop(self):
         raise NotImplementedError
 
