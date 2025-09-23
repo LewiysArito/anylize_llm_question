@@ -1,16 +1,20 @@
+from dataclasses import asdict
+from datetime import datetime
 import json
 import logging
 import abc
 import asyncio
 
 from typing import List, Optional
-from dataclasses import asdict
+from uuid import UUID
 from aiokafka import AIOKafkaConsumer
 from aiokafka.errors import KafkaError
+from ipaddress import IPv4Address
 
 from analyze_user_query import config
 from analyze_user_query import bootstrap, config
 from analyze_user_query.domain import commands
+from analyze_user_query.domain.model import DataUserQuery
 from analyze_user_query.service_layer.messagebus import AsyncMessageBus
 
 logger = logging.getLogger(__name__)
@@ -40,14 +44,26 @@ class KafkaConsumer(AbstractEventConsumer):
         self.consumer: Optional[AIOKafkaConsumer] = None
         self.bootstrap_servers = bootstrap_servers
         self.topics = topics
-        
-    async def main(self):    
+    
+    async def handle_user_query_analyze(data_user_query: DataUserQuery, bus: AsyncMessageBus):
+        cmd = commands.AnylizeUserQuery(asdict(data_user_query))
+        bus.handle(cmd)        
+
+    async def main(self):
         await self.start()
-        
+
         try:
             async for msg in self.consumer:
                 logger.info(f"handling message {msg}")
-            
+                message = json.loads(msg.value)
+                data_user_query = DataUserQuery(
+                    event_id=UUID(message["event_id"]),
+                    ip_address=IPv4Address(message["ip_address"]),
+                    timestamp=datetime.strptime(message["timestamp"], "%Y-%m-%d %H:%M:%S"),
+                    **message
+                )
+                await self.handle_user_query_for_analytics(data_user_query, bus)
+
         except KafkaError:
             logger.exception(f"Kafka error {e}")
         except Exception as e:
