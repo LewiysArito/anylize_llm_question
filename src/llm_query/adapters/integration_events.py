@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from datetime import datetime
 
 class IntegrationEvent:
     pass
@@ -10,4 +9,4 @@ class UserQueryPublishedEvent(IntegrationEvent):
     model: str
     ip_address: str
     raw_text: str
-    timestamp: datetime
+    timestamp: str

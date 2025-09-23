@@ -1,0 +1,49 @@
+import abc
+from typing import Any, AsyncGenerator, Dict
+from llm_query import config
+from ollama import AsyncClient
+
+DEFAULT_BASE_URL = config.get_llm_url_and_max_token()["base_url"]
+DEFAULT_MAX_TOKENS = config.get_llm_url_and_max_token()["max_tokens"]
+
+class LLMQueryError(Exception):
+    pass
+
+class AbstractLLMClient(abc.ABC):
+    @abc.abstractmethod
+    async def generate(self, 
+        model: str,
+        prompt: str,
+        temperature: float = 0.7,
+    )-> Dict[str, Any]:
+        raise NotImplementedError
+        
+    async def get_themes_by_query(prompt: str, temperature: str, model: str):
+        raise NotImplementedError
+    
+class OllamaQuery(AbstractLLMClient):
+    def __init__(self, base_url:str=DEFAULT_BASE_URL, max_tokens:float=DEFAULT_MAX_TOKENS):
+        self.client = AsyncClient(base_url)
+        self.max_tokens = max_tokens
+
+    async def generate(self, prompt: str, temperature:float, model: str)-> Dict[str, Any]:
+        try:
+            response = await self.client.generate(
+                model=model,
+                prompt=prompt,
+                options={
+                    "temperature": temperature,
+                    "num_predict": self.max_tokens
+                },
+                stream=False
+            )
+            return response["response"]
+        except Exception as e:
+            raise LLMQueryError(f"Failed to generate completion: {e}") from e  
+    
+    async def get_themes_by_query(self, prompt: str, temperature: str, model: str):
+        prompt = ""
+        
+        themes = await self.generate(
+
+        )

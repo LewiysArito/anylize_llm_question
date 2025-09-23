@@ -1,4 +1,5 @@
 from datetime import datetime
+from ipaddress import IPv4Address
 import uuid
 from starlette.status import (
     HTTP_400_BAD_REQUEST,
@@ -33,9 +34,9 @@ async def generate_response(request: Request, body: UserQuery):
         
         cmd = commands.UserQueryPublish(
             body.model,
-            request.client.host,
+            IPv4Address(request.client.host),
             body.prompt,
-            datetime.now()
+            datetime.now().replace(microsecond=0)
         )
         await bus.handle(cmd)
 

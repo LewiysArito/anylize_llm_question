@@ -3,7 +3,7 @@ import logging
 from uuid import UUID
 import clickhouse_connect as ch
 from clickhouse_connect.driver.asyncclient import AsyncClient
-from typing import List, Optional, Set
+from typing import List, Optional
 from analyze_user_query.domain import model
 
 logger = logging.getLogger(__name__)

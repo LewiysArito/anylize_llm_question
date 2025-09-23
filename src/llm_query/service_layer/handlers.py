@@ -14,7 +14,7 @@ async def handle_publish_user_query(
     integration_event = UserQueryPublishedEvent(
         str(uuid.uuid4()),
         command.model,
-        command.ip_address,
+        str(command.ip_address),
         command.raw_text,
         str(command.created_at)
     )
