@@ -1,6 +1,6 @@
 # pylint: disable=too-few-public-methods
 import abc
-from typing import Any, AsyncGenerator, Dict
+from typing import AsyncGenerator
 from llm_query import config
 from ollama import AsyncClient
 
@@ -16,23 +16,23 @@ class AbstractLLMClient(abc.ABC):
         model: str,
         prompt: str,
         temperature: float = 0.7,
-    )-> Dict[str, Any]:
+    )-> str:
         raise NotImplementedError
 
     @abc.abstractmethod
     async def generate_with_stream(self, 
         model: str,
         prompt: str,
-        temperature: float,
-    )->AsyncGenerator[Dict[str, Any], None]:
+        temperature: float = 0.7,
+    )->AsyncGenerator[str, None]:
         raise NotImplementedError
     
 class OllamaQuery(AbstractLLMClient):
-    def __init__(self,base_url:str=DEFAULT_BASE_URL, max_tokens:float=DEFAULT_MAX_TOKENS):
+    def __init__(self,base_url:str=DEFAULT_BASE_URL, max_tokens:int=DEFAULT_MAX_TOKENS):
         self.client = AsyncClient(base_url)
         self.max_tokens = max_tokens
 
-    async def generate(self, prompt: str, temperature:float, model: str)-> Dict[str, Any]:
+    async def generate(self, model: str, prompt: str, temperature: float = 0.7)-> str:
         try:
             response = await self.client.generate(
                 model=model,
@@ -47,11 +47,11 @@ class OllamaQuery(AbstractLLMClient):
         except Exception as e:
             raise LLMQueryError(f"Failed to generate completion: {e}") from e
         
-    async def generate_with_stream(self, prompt: str, temperature: float, model: str)->AsyncGenerator[Dict[str, Any], None]:
+    async def generate_with_stream(self, prompt: str, model: str, temperature: float = 0.7)->AsyncGenerator[str, None]:
         try:
             async for chunk in await self.client.generate(
                 model=model,
-                    prompt=prompt,
+                    prompt=prompt,ß
                     options={
                         "temperature": temperature,
                         "num_predict": self.max_tokens
