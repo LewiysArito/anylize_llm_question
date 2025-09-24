@@ -1,22 +1,28 @@
 import logging
 import asyncio
-from taskiq_aio_kafka import AioKafkaBroker
-from ftlangdetect import detect
+from taskiq import InMemoryBroker
 
-from analyze_user_query import bootstrap, config
+from analyze_user_query import bootstrap
+from analyze_user_query.domain import queries
+from analyze_user_query.service_layer.query_dispatcher import AsyncQueryDispatcher
 
 logger = logging.getLogger(__name__)
-DEFAULT_BASE_URL = config.get_kafka_url()
+task_broker = InMemoryBroker()
+_, dispatcher = bootstrap.bootstrap()
 
-bus = bootstrap.bootstrap()
-broker = AioKafkaBroker(bootstrap_servers=DEFAULT_BASE_URL)
-broker.configure_producer()
-broker.configure_consumer()
+@task_broker.task("definition_language_problem")
+async def task_definition_language_problem(text: str)->str:
+    query = queries.DefineLanguage(text)
+    return await dispatcher.handle(query)
 
-async def definition_language_problem(text: str):
-    code_country = asyncio.to_thread(detect, text)["lang"]
-    return code_country.upper()
+async def start_worker():
+    logger.info("Starting TaskIQ worker...")
+    await task_broker.startup()
+    
+    try:
+        await task_broker.listen()
+    finally:
+        await task_broker.shutdown()
 
-@broker.task("definition_language_problem")
-async def task_definition_language_problem(text: str):
-    return await definition_language_problem(text)
+if __name__ == "__main__":  
+    asyncio.run(start_worker())

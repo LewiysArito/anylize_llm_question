@@ -11,7 +11,6 @@ from aiokafka import AIOKafkaConsumer
 from aiokafka.errors import KafkaError
 from ipaddress import IPv4Address
 
-from analyze_user_query import config
 from analyze_user_query import bootstrap, config
 from analyze_user_query.domain import commands
 from analyze_user_query.domain.model import DataUserQuery
@@ -19,10 +18,9 @@ from analyze_user_query.service_layer.messagebus import AsyncMessageBus
 
 logger = logging.getLogger(__name__)
 DEFAULT_BASE_URL = config.get_kafka_url()
-bus = bootstrap.bootstrap()
+bus, _ = bootstrap.bootstrap()
 
 class AbstractEventConsumer(abc.ABC):
-    
     @abc.abstractmethod
     async def start(self):
         raise NotImplementedError
@@ -40,14 +38,15 @@ class AbstractEventConsumer(abc.ABC):
         raise NotImplementedError
 
 class KafkaConsumer(AbstractEventConsumer):
-    def __init__(self, topics: List[str] = ["llm_anylize"], bootstrap_servers = DEFAULT_BASE_URL):
+    def __init__(self, topics: List[str] = ["llm_anylize"], bootstrap_servers = DEFAULT_BASE_URL, bus = bus):
         self.consumer: Optional[AIOKafkaConsumer] = None
         self.bootstrap_servers = bootstrap_servers
         self.topics = topics
-    
-    async def handle_user_query_analyze(data_user_query: DataUserQuery, bus: AsyncMessageBus):
+        self.bus = bus
+
+    async def handle_user_query_for_analytics(self, data_user_query: DataUserQuery):
         cmd = commands.AnylizeUserQuery(asdict(data_user_query))
-        bus.handle(cmd)        
+        self.bus.handle(cmd)        
 
     async def main(self):
         await self.start()

@@ -34,7 +34,6 @@ class IpInfoService(AbstractIpGeolocation):
         try:
             country_info = await self.get_info_by_ip(ip)
             
-            # Проверка на пустой результат
             if not country_info or not country_info.get("features"):
                 logger.warning(f"No features found for IP: {ip}")
                 return None

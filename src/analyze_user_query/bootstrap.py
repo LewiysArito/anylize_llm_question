@@ -4,23 +4,33 @@ from analyze_user_query.service_layer import handlers, messagebus, query_handler
 from analyze_user_query.adapters.http_ip_geolocation import AbstractIpGeolocation, IpInfoService 
 from analyze_user_query.adapters.ollama import AbstractLLMClient, OllamaQuery
 from analyze_user_query.adapters.repository import AbstractColumnRepository, ClickhouseRepository
+from analyze_user_query.adapters.language_detect import AbstractFtlangDetect, FtlangDetect
 
 def bootstrap(
     ip_geolocation: AbstractIpGeolocation = None,
-    ollama: AbstractLLMClient = None,
-    repo: AbstractColumnRepository = None
+    llm: AbstractLLMClient = None,
+    repo: AbstractColumnRepository = None,
+    language_detect: AbstractFtlangDetect = None
 ) -> Tuple[messagebus.AsyncMessageBus, query_dispatcher.AsyncQueryDispatcher]:
 
     if ip_geolocation is None:
         ip_geolocation = IpInfoService()
     
-    if ollama is None:
-        ollama = OllamaQuery()
+    if llm is None:
+        llm = OllamaQuery()
     
     if repo is None:
         repo = ClickhouseRepository()
+    
+    if language_detect is None:
+        language_detect = FtlangDetect()
 
-    dependencies = {"repo": repo, "ip_geolocation": ip_geolocation, "ollama": ollama}
+    dependencies = {
+        "repo": repo,
+        "ip_geolocation": ip_geolocation,
+        "llm": llm,
+        "language_detect": language_detect
+    }
     
     injected_event_handlers = {
         event_type: [
