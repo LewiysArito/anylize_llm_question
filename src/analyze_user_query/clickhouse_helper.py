@@ -53,27 +53,56 @@ class Object(ColumnType):
         return f"JSON"
 
 class Decimal(ColumnType):
-    DECIMAL_BITS = [32, 64, 128, 256]
-    def __init__(self, bit: Optional[Literal[32, 64, 128, 256]], p: Optional[int]=None, s: Optional[int]=None):
-        if not bit and (not p or not s):
-            raise ValueError("")
-        
-        if bit and bit not in self.DECIMAL_BITS:
-            raise ValueError("")
+    DECIMAL_BITS = {32: 9, 64: 18, 128: 38, 256: 76}
+    MAX_VALUE_P = 76
+    MIN_VALUE = 0
 
-        if bit and not s:
-            raise ValueError("")
+    def __init__(self, bit: Optional[Literal[32, 64, 128, 256]] = None, 
+                 p: Optional[int] = None, s: Optional[int] = None):
         
+        if p is not None and p < self.MIN_VALUE:
+            raise ValueError("Value p must be positive")
+        if s is not None and s < self.MIN_VALUE:
+            raise ValueError("Value s must be positive")
+        
+        if bit is not None and p is not None:
+            raise ValueError(
+                "Cannot use p when used bit"
+                "Use either Decimal(p, s)"
+            )
+        
+        if bit is None and (p is None or s is None):
+            raise ValueError(
+                "For Decimal(p, s) both precision (p) and scale (s) must be specified"
+            )
+
+        if bit is not None and bit not in self.DECIMAL_BITS:
+            raise ValueError(f"Bit must be from the following list: {','.join(map(str, self.DECIMAL_BITS.keys()))}")
+        
+        if bit is not None and s is not None:
+            if s > self.DECIMAL_BITS[bit]:
+                raise ValueError(f"For Decimal{bit} scale (s) max value must be {self.DECIMAL_BITS[bit]} or less")
+
+        if p is not None and s is not None:
+            if p > self.MAX_VALUE_P:
+                raise ValueError(f"Precision (p) must be {self.MAX_VALUE_P} or less")
+            if s > p:
+                raise ValueError(f"Scale (s) must be less or equal to precision (p)")
+
         self.bit = bit
         self.p = p
         self.s = s
 
     def __str__(self):
-        return f"Decimal({self.p}, {self.s})" if not self.bit else f"Decimal{self.bit}({self.s})"
-
+        if self.bit and self.s is not None:
+            return f"Decimal{self.bit}({self.s})"
+        elif self.p is not None and self.s is not None:
+            return f"Decimal({self.p}, {self.s})"
+        else:
+            raise ValueError("Invalid Decimal configuration")
     
 class Float(ColumnType):
-    def __str__():
+    def __str__(self):
         return "Float32"
 
 class Double(ColumnType):
@@ -149,7 +178,7 @@ class Column:
 class Table:
     def __init__(self, 
         table_name: str,
-        engine: EngineType = EngineType.MERGERTREE,
+        engine: EngineType = EngineType.MERGETREE,
         order_by: Optional[Union[str, List[str]]] = None,
         partition_by: Optional[str] = None,
         primary_key: Optional[Union[str, List[str]]] = None,
@@ -161,13 +190,42 @@ class Table:
         self.partition_by = partition_by
         self.primary_key = primary_key
         
-        self.columns = []
+        self.columns: List[Column] = []
 
         for column_obj in columns:
             if isinstance(column_obj, Column):
                 self.columns.append(column_obj)
 
-        self._columns_dict = {col.name: col for col in self.columns}
+        self._columns_dict = {column_obj.name: column_obj for col in self.columns}
 
-        pass
+    def add_column(self, column: Column): 
+        self.columns.append(column)
+        self._columns_dict[column.name] = self.column
+    
+    def generate_sql_for_create(self) -> str:
+        query = f'CREATE TABLE {self.table_name}'
+        query += "\n("
+        for column in self.columns:
+            query += f"\n\t{str(column)}"
+        query += "\n)"
+        query += f"\nENGINE = {self.engine}"
+        
+        if self.partition_by:
+            query += f"\nPARTITION BY {self.partition_by}"
+        
+        if self.primary_key:
+            if isinstance(self.order_by, list): 
+                query += f"\nPRIMARY KEY ({", ".join(self.primary_key)})"
+            else:
+                query += f"nPRIMARY KEY {self.primary_key})"
+
+        if self.order_by:
+            if isinstance(self.order_by, list): 
+                query += f"\nORDER BY ({", ".join(self.order_by)})"
+            else:
+                query += f"\nORDER BY {self.order_by})"
+        
+        return query
+
+
 
