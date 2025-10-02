@@ -23,7 +23,7 @@ def test_decimal_valid(bit, p, s, expected_str):
     (32, None, -1),
     (64, None, -10)
 ])
-def test_decimal_positive_s_value(bit, p, s):
+def test_decimal_not_positive_s_value(bit, p, s):
     with pytest.raises(ValueError, match="Value s must be positive"):
         Decimal(bit, p, s)
 
@@ -31,7 +31,7 @@ def test_decimal_positive_s_value(bit, p, s):
     (None, -10, 1),
     (None, -20, 50)
 ])
-def test_decimal_positive_p_value(bit, p, s):
+def test_decimal_not_positive_p_value(bit, p, s):
     with pytest.raises(ValueError, match="Value p must be positive"):
         Decimal(bit, p, s)
 
@@ -39,7 +39,7 @@ def test_decimal_positive_p_value(bit, p, s):
     (64, 10, 9),
     (128, 15, 13)
 ])
-def test_decimal_without_p_when_use_bit(bit, p, s):
+def test_decimal_with_p_when_use_bit(bit, p, s):
     pattern = re.escape("Cannot use p when used bit. Use either Decimal(p, s)")
     with pytest.raises(ValueError, match=pattern):
         Decimal(bit, p, s)
@@ -48,7 +48,7 @@ def test_decimal_without_p_when_use_bit(bit, p, s):
     (None, 9, None),
     (None, None, 10)
 ])
-def test_decimal_require_s_and_p_when_bit_is_none(bit, p, s):
+def test_decimal_error_require_s_and_p_when_bit_is_none(bit, p, s):
     pattern = re.escape("For Decimal(p, s) both precision (p) and scale (s) must be specified")
     with pytest.raises(ValueError, match=pattern):
         Decimal(bit, p, s)
@@ -57,7 +57,7 @@ def test_decimal_require_s_and_p_when_bit_is_none(bit, p, s):
     (63, None, 10),
     (126, None, 24)
 ])    
-def test_decimal_valid_bits(bit, p, s):
+def test_decimal_invalid_bits(bit, p, s):
     with pytest.raises(ValueError, match="Bit must be from the following list"):
         Decimal(bit, p, s)
 
@@ -67,7 +67,7 @@ def test_decimal_valid_bits(bit, p, s):
     (128, None, 40),
     (256, None, 80),
 ]) 
-def test_decimal_valid_s_value_for_certain_bit(bit, p, s):
+def test_decimal_invalid_s_value_for_certain_bit(bit, p, s):
     pattern = re.escape(f"For Decimal{bit} scale (s) max value must be")
     with pytest.raises(ValueError, match=pattern):
         Decimal(bit, p, s)
@@ -75,7 +75,7 @@ def test_decimal_valid_s_value_for_certain_bit(bit, p, s):
 @pytest.mark.parametrize("bit,p,s", [
     (None, 79, 70),
 ]) 
-def test_decimal_valid_max_p_when_bit_is_none(bit, p, s):
+def test_decimal_invalid_max_p_when_bit_is_none(bit, p, s):
     pattern = re.escape("Precision (p) must be")
     with pytest.raises(ValueError, match=pattern):
         Decimal(bit, p, s)
@@ -84,7 +84,7 @@ def test_decimal_valid_max_p_when_bit_is_none(bit, p, s):
     (None, 60, 61),
     (None, 30, 32),
 ]) 
-def test_decimal_p_more_then_s(bit, p, s):
+def test_decimal_error_p_more_then_s(bit, p, s):
     pattern = re.escape("Scale (s) must be less or equal to precision (p)")
     with pytest.raises(ValueError, match=pattern):
         Decimal(bit, p, s)

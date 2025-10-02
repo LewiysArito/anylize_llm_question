@@ -1,3 +1,4 @@
+import re
 from typing import List, Literal, Optional, Union, Any, Dict
 import enum
 
@@ -42,11 +43,15 @@ class String(ColumnType):
         return "String"
     
 class FixedString(ColumnType):
+    MAX_VALUE = 256 
     def __init__(self, length: int):
+        if length > self.MAX_VALUE:
+            raise ValueError(f"Max byte equal {self.MAX_VALUE}")
+
         self.length = length
     
     def __str__(self):
-        return f"FixedString{self.length}"
+        return f"FixedString({self.length})"
 
 class Object(ColumnType):
     def __str__(self):
@@ -60,14 +65,9 @@ class Decimal(ColumnType):
     def __init__(self, bit: Optional[Literal[32, 64, 128, 256]] = None, 
                  p: Optional[int] = None, s: Optional[int] = None):
         
-        if p is not None and p < self.MIN_VALUE:
-            raise ValueError("Value p must be positive")
-        if s is not None and s < self.MIN_VALUE:
-            raise ValueError("Value s must be positive")
-        
         if bit is not None and p is not None:
             raise ValueError(
-                "Cannot use p when used bit"
+                "Cannot use p when used bit. "
                 "Use either Decimal(p, s)"
             )
         
@@ -75,13 +75,16 @@ class Decimal(ColumnType):
             raise ValueError(
                 "For Decimal(p, s) both precision (p) and scale (s) must be specified"
             )
+        if p is not None and p < self.MIN_VALUE:
+            raise ValueError("Value p must be positive")
+        if s is not None and s < self.MIN_VALUE:
+            raise ValueError("Value s must be positive")
 
         if bit is not None and bit not in self.DECIMAL_BITS:
             raise ValueError(f"Bit must be from the following list: {','.join(map(str, self.DECIMAL_BITS.keys()))}")
         
-        if bit is not None and s is not None:
-            if s > self.DECIMAL_BITS[bit]:
-                raise ValueError(f"For Decimal{bit} scale (s) max value must be {self.DECIMAL_BITS[bit]} or less")
+        if bit is not None and s is not None and s > self.DECIMAL_BITS[bit]:
+            raise ValueError(f"For Decimal{bit} scale (s) max value must be {self.DECIMAL_BITS[bit]} or less")
 
         if p is not None and s is not None:
             if p > self.MAX_VALUE_P:
@@ -161,25 +164,40 @@ class Array(ColumnType):
     
 class Column:
     def __init__(self, name: str, type: ColumnType, 
-                 primary_key: bool = False, 
-                 nullable: bool = True,
-                 default: Any = None):
-        self.name = name
+            primary_key: bool = False, 
+            nullable: bool = True,
+            default: Any = None):
+        
+        if not name or not isinstance(name, str) or not name.strip():
+            raise ValueError("Name is cannot be empty")
+
+        if not isinstance(type, ColumnType):
+            raise ValueError("Type must be instance of ColumnType")
+        
+        if primary_key and nullable:
+            raise ValueError("Primary key cannot be nullable")
+        
+        self.name = name.strip()
         self.type = type
         self.primary_key = primary_key
         self.nullable = nullable
         self.default = default
-    
+
     def __str__(self) -> str:
         nullability = " NULL" if self.nullable else " NOT NULL"
-        default = f" DEFAULT {self.default}" if self.default is not None else ""
+        
+        if isinstance(self.default, str) and not re.match(r"\w+\(.*\)$", self.default):
+            default = f" DEFAULT '{self.default}'" if self.default is not None else ""
+        else:
+            default = f" DEFAULT {self.default}" if self.default is not None else ""
+
         return f"{self.name} {self.type}{nullability}{default}"
 
 class Table:
     def __init__(self, 
         table_name: str,
         engine: EngineType = EngineType.MERGETREE,
-        order_by: Optional[Union[str, List[str]]] = None,
+        order_by: Union[str, List[str]] = None,
         partition_by: Optional[str] = None,
         primary_key: Optional[Union[str, List[str]]] = None,
         *columns: Column
@@ -219,11 +237,10 @@ class Table:
             else:
                 query += f"nPRIMARY KEY {self.primary_key})"
 
-        if self.order_by:
-            if isinstance(self.order_by, list): 
-                query += f"\nORDER BY ({", ".join(self.order_by)})"
-            else:
-                query += f"\nORDER BY {self.order_by})"
+        if isinstance(self.order_by, list): 
+            query += f"\nORDER BY ({", ".join(self.order_by)})"
+        else:
+            query += f"\nORDER BY {self.order_by})"
         
         return query
 
