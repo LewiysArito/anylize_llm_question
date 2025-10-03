@@ -161,7 +161,7 @@ class Array(ColumnType):
     
     def __str__(self):
         return f"Array({self.item_type})"
-    
+
 class Column:
     def __init__(self, name: str, type: ColumnType, 
             primary_key: bool = False, 
@@ -173,9 +173,6 @@ class Column:
 
         if not isinstance(type, ColumnType):
             raise ValueError("Type must be instance of ColumnType")
-        
-        if primary_key and nullable:
-            raise ValueError("Primary key cannot be nullable")
         
         self.name = name.strip()
         self.type = type
@@ -197,11 +194,13 @@ class Table:
     def __init__(self, 
         table_name: str,
         engine: EngineType = EngineType.MERGETREE,
-        order_by: Union[str, List[str]] = None,
+        order_by: Optional[Union[str, List[str]]] = None,
         partition_by: Optional[str] = None,
         primary_key: Optional[Union[str, List[str]]] = None,
         *columns: Column
     ):
+        self._validate_constructor_args(table_name, engine, columns)
+
         self.table_name = table_name
         self.engine = engine
         self.order_by = order_by
@@ -214,12 +213,65 @@ class Table:
             if isinstance(column_obj, Column):
                 self.columns.append(column_obj)
 
-        self._columns_dict = {column_obj.name: column_obj for col in self.columns}
+        self._columns_dict = {column_obj.name: column_obj for column_obj in self.columns}
 
-    def add_column(self, column: Column): 
+        self._validate_table_structure()
+        self._validate_primary_key_order_by_relation()
+
+    def _validate_constructor_args(self,
+        table_name: str, 
+        engine: EngineType,
+        columns: List[Column]
+    ):
+        if not table_name or not isinstance(table_name, str) or not table_name.strip():
+            raise ValueError("Table name cannot be empty")
+        
+        if not isinstance(engine, EngineType):
+            raise TypeError("Engine must be instance of EngineType")
+            
+        if not any(isinstance(column, Column) for column in columns):
+            raise ValueError("At least one Column must be provided")
+
+    def _validate_table_structure(self):
+        if self.primary_key:
+            primary_keys = [self.primary_key] if isinstance(self.primary_key, str) else self.primary_key
+            
+            for key in primary_keys:
+                if not self._columns_dict.get(key):
+                    raise ValueError(f"Primary key column '{key}' not found in table columns")
+
+                if self._columns_dict.get(key).nullable:
+                    raise ValueError(f"Primary key column '{key}' cannot be nullable")
+
+        if self.partition_by and not any(name in self.partition_by for name in [column.name for column in self.columns]):
+            raise ValueError(f"Primary key column '{self.partition_by}' cannot be used") 
+
+        if self.order_by:
+            order_by = [self.order_by] if isinstance(self.order_by, str) else self.order_by
+
+            for order_col in order_by:
+                if not self._columns_dict.get(order_col):
+                    raise ValueError(f"Order by column '{order_col}' not found in table columns")
+                
+    def _validate_primary_key_order_by_relation(self):
+        if not self.primary_key or not self.order_by:
+            return
+            
+        pk_length = len(self.primary_key) if isinstance(self.primary_key, list) else 1
+        order_by_length = len(self.order_by) if isinstance(self.order_by, list) else 1
+        
+        if pk_length > order_by_length:
+            raise ValueError(
+                f"PRIMARY KEY length ({pk_length}) must be less than ORDER BY length ({order_by_length})"
+            )
+
+    def add_column(self, column: Column):
+        if column.name in self._columns_dict:
+            raise ValueError(f"Column '{column.name}' already exists")
+        
         self.columns.append(column)
-        self._columns_dict[column.name] = self.column
-    
+        self._columns_dict[column.name] = column
+
     def generate_sql_for_create(self) -> str:
         query = f'CREATE TABLE {self.table_name}'
         query += "\n("
@@ -233,12 +285,12 @@ class Table:
         
         if self.primary_key:
             if isinstance(self.order_by, list): 
-                query += f"\nPRIMARY KEY ({", ".join(self.primary_key)})"
+                query += f"\nPRIMARY KEY ({', '.join(self.primary_key)})"
             else:
-                query += f"nPRIMARY KEY {self.primary_key})"
+                query += f"\nPRIMARY KEY {self.primary_key})"
 
         if isinstance(self.order_by, list): 
-            query += f"\nORDER BY ({", ".join(self.order_by)})"
+            query += f"\nORDER BY ({', '.join(self.order_by)})"
         else:
             query += f"\nORDER BY {self.order_by})"
         
