@@ -120,6 +120,14 @@ class DateTime(ColumnType):
     def __str__(self):
         return "DateTime"
 
+class IPv4(ColumnType):
+    def __str__(self):
+        return "IPv4"
+
+class IPv6(ColumnType):
+    def __str__(self):
+        return "IPv6"
+
 class Date(ColumnType):
     def __str__(self):
         return "Date"
@@ -163,10 +171,11 @@ class Array(ColumnType):
         return f"Array({self.item_type})"
 
 class Column:
-    def __init__(self, name: str, type: ColumnType, 
-            primary_key: bool = False, 
+    def __init__(self, 
+            name: str,
+            type: ColumnType,
             nullable: bool = True,
-            default: Any = None):
+            default: Optional[Any] = None):
         
         if not name or not isinstance(name, str) or not name.strip():
             raise ValueError("Name is cannot be empty")
@@ -176,14 +185,15 @@ class Column:
         
         self.name = name.strip()
         self.type = type
-        self.primary_key = primary_key
         self.nullable = nullable
         self.default = default
 
     def __str__(self) -> str:
         nullability = " NULL" if self.nullable else " NOT NULL"
         
-        if isinstance(self.default, str) and not re.match(r"\w+\(.*\)$", self.default):
+        if isinstance(self.default, str) \
+            and not re.match(r"\w+\(.*\)$", self.default)\
+            and self.default.upper() != "NULL":
             default = f" DEFAULT '{self.default}'" if self.default is not None else ""
         else:
             default = f" DEFAULT {self.default}" if self.default is not None else ""
@@ -199,8 +209,6 @@ class Table:
         primary_key: Optional[Union[str, List[str]]] = None,
         *columns: Column
     ):
-        self._validate_constructor_args(table_name, engine, columns)
-
         self.table_name = table_name
         self.engine = engine
         self.order_by = order_by
@@ -208,28 +216,26 @@ class Table:
         self.primary_key = primary_key
         
         self.columns: List[Column] = []
-
         for column_obj in columns:
             if isinstance(column_obj, Column):
                 self.columns.append(column_obj)
 
         self._columns_dict = {column_obj.name: column_obj for column_obj in self.columns}
-
+        
+        self._validate_constructor_args()
         self._validate_table_structure()
         self._validate_primary_key_order_by_relation()
 
-    def _validate_constructor_args(self,
-        table_name: str, 
-        engine: EngineType,
-        columns: List[Column]
-    ):
-        if not table_name or not isinstance(table_name, str) or not table_name.strip():
+    def __str__(self):
+        return f"TABLE {self.table_name}"
+
+    def _validate_constructor_args(self):
+        if not self.table_name or not isinstance(self.table_name, str) or not self.table_name.strip():
             raise ValueError("Table name cannot be empty")
         
-        if not isinstance(engine, EngineType):
+        if not isinstance(self.engine, EngineType):
             raise TypeError("Engine must be instance of EngineType")
-            
-        if not any(isinstance(column, Column) for column in columns):
+        if not any([isinstance(column, Column) for column in self.columns]):
             raise ValueError("At least one Column must be provided")
 
     def _validate_table_structure(self):
@@ -295,6 +301,3 @@ class Table:
             query += f"\nORDER BY {self.order_by})"
         
         return query
-
-
-
