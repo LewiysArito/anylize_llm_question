@@ -235,6 +235,7 @@ class Table:
         
         if not isinstance(self.engine, EngineType):
             raise TypeError("Engine must be instance of EngineType")
+        
         if not any([isinstance(column, Column) for column in self.columns]):
             raise ValueError("At least one Column must be provided")
 
@@ -249,8 +250,12 @@ class Table:
                 if self._columns_dict.get(key).nullable:
                     raise ValueError(f"Primary key column '{key}' cannot be nullable")
 
-        if self.partition_by and not any(name in self.partition_by for name in [column.name for column in self.columns]):
-            raise ValueError(f"Primary key column '{self.partition_by}' cannot be used") 
+        if self.partition_by:
+            search = re.search(r'\(([^)]+)\)', self.partition_by)
+        
+            text = search.group(1) if search else self.partition_by  
+            if not any(name == text for name in [column.name for column in self.columns]):
+                raise ValueError(f"Partition by column '{text}' cannot be used") 
 
         if self.order_by:
             order_by = [self.order_by] if isinstance(self.order_by, str) else self.order_by
@@ -268,7 +273,7 @@ class Table:
         
         if pk_length > order_by_length:
             raise ValueError(
-                f"PRIMARY KEY length ({pk_length}) must be less than ORDER BY length ({order_by_length})"
+                f"PRIMARY KEY length ({pk_length}) must be less or equal ORDER BY length ({order_by_length})"
             )
 
     def add_column(self, column: Column):

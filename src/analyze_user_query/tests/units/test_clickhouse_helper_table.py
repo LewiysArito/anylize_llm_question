@@ -52,3 +52,170 @@ def test_column_creation_and_string_value(table_name,engine,order_by,partition_b
     assert table.primary_key ==  primary_key
     
     assert str(table) == expected_sql_parts
+
+def test_empty_table_name():
+    with pytest.raises(ValueError, match="Table name cannot be empty"):
+        table = Table(
+            "",
+            EngineType.MERGETREE,  
+            ["date", "country_code", "language_code", "model_llm"],
+            "toYYYYMM(date)",
+            None,
+            Column("text", String(), False),
+            Column("date", Date(), False),
+            Column("themes", Array(FixedString(128)), False),
+            Column("language_code", FixedString(3), False),
+            Column("country_code", FixedString(3), True, "NULL"),
+            Column("user_ip", IPv4(), True, "NULL"),
+            Column("model_llm", String(), False)
+        )
+
+@pytest.mark.parametrize("engine", [
+    (str), (Array), (Integer)
+])
+def test_none_engine_type_value(engine):
+    with pytest.raises(TypeError, match="Engine must be instance of EngineType"):
+        table = Table(
+            "analize_user_llm_query",
+            engine, 
+            ["date", "country_code", "language_code", "model_llm"],
+            "toYYYYMM(date)",
+            None,
+            Column("text", String(), False),
+            Column("date", Date(), False),
+            Column("themes", Array(FixedString(128)), False),
+            Column("language_code", FixedString(3), False),
+            Column("country_code", FixedString(3), True, "NULL"),
+            Column("user_ip", IPv4(), True, "NULL"),
+            Column("model_llm", String(), False)
+        )
+
+@pytest.mark.parametrize("columns", [
+    (
+        str("123"), 
+        Array(String())
+    ), 
+    (
+        FixedString(23),
+        Integer(32)
+    )
+])
+def test_not_provide_column_value(columns):
+    with pytest.raises(ValueError, match="At least one Column must be provided"):
+        table = Table(
+            "analize_user_llm_query",
+            EngineType.MERGETREE, 
+            ["date", "country_code", "language_code", "model_llm"],
+            "toYYYYMM(date)",
+            None,
+            *columns
+        )
+
+@pytest.mark.parametrize("primary_key", [
+    ("test"), 
+    (["data", "table"]),
+])
+def test_primary_key_not_found_between_column(primary_key):
+    with pytest.raises(ValueError, match="not found in table columns"):
+        table = Table(
+            "analize_user_llm_query",
+            EngineType.MERGETREE, 
+            ["date", "country_code", "language_code", "model_llm"],
+            "toYYYYMM(date)",
+            primary_key,
+            Column("text", String(), False),
+            Column("date", Date(), False),
+            Column("themes", Array(FixedString(128)), False),
+            Column("language_code", FixedString(3), False),
+            Column("country_code", FixedString(3), True, "NULL"),
+            Column("user_ip", IPv4(), True, "NULL"),
+            Column("model_llm", String(), False)
+        )
+
+@pytest.mark.parametrize("primary_key", [
+    ("country_code"), 
+    (["date", "user_ip"])
+])
+def test_primary_key_for_not_null_column(primary_key):
+    with pytest.raises(ValueError, match="cannot be nullable"):
+        table = Table(
+            "analize_user_llm_query",
+            EngineType.MERGETREE, 
+            ["date", "country_code", "language_code", "model_llm"],
+            "toYYYYMM(date)",
+            primary_key,
+            Column("text", String(), False),
+            Column("date", Date(), False),
+            Column("themes", Array(FixedString(128)), False),
+            Column("language_code", FixedString(3), False),
+            Column("country_code", FixedString(3), True, "NULL"),
+            Column("user_ip", IPv4(), True, "NULL"),
+            Column("model_llm", String(), False)
+        )
+
+@pytest.mark.parametrize("partition_by", [
+    ("toYYYYMM(datetime)"), 
+    ("month"),
+])
+def test_primary_key_not_found_between_column(partition_by):
+    with pytest.raises(ValueError, match="cannot be used"):
+        table = Table(
+            "analize_user_llm_query",
+            EngineType.MERGETREE, 
+            ["date", "country_code", "language_code", "model_llm"],
+            partition_by,
+            None,
+            Column("text", String(), False),
+            Column("date", Date(), False),
+            Column("themes", Array(FixedString(128)), False),
+            Column("language_code", FixedString(3), False),
+            Column("country_code", FixedString(3), True, "NULL"),
+            Column("user_ip", IPv4(), True, "NULL"),
+            Column("model_llm", String(), False)
+        )
+
+@pytest.mark.parametrize("order_by", [
+    ("data"), 
+    (["date", "country_code", "language"]),
+])
+def test_order_by_not_found_between_column(order_by):
+    with pytest.raises(ValueError, match="not found in table columns"):
+        table = Table(
+            "analize_user_llm_query",
+            EngineType.MERGETREE, 
+            order_by,
+            "toYYYYMM(date)",
+            None,
+            Column("text", String(), False),
+            Column("date", Date(), False),
+            Column("themes", Array(FixedString(128)), False),
+            Column("language_code", FixedString(3), False),
+            Column("country_code", FixedString(3), True, "NULL"),
+            Column("user_ip", IPv4(), True, "NULL"),
+            Column("model_llm", String(), False)
+        )
+@pytest.mark.parametrize("order_by,primary_key", [
+    ("date", ["date", "language_code"]),
+    (["date", "language_code"], ["date", "language_code", "model_llm"]),
+]) 
+def test_len_order_by_column_less_then_primary_column(order_by, primary_key):
+    with pytest.raises(ValueError, match="must be less or equal ORDER BY length"):
+        table = Table(
+            "analize_user_llm_query",
+            EngineType.MERGETREE, 
+            order_by,
+            "toYYYYMM(date)",
+            primary_key,
+            Column("text", String(), False),
+            Column("date", Date(), False),
+            Column("themes", Array(FixedString(128)), False),
+            Column("language_code", FixedString(3), False),
+            Column("country_code", FixedString(3), True, "NULL"),
+            Column("user_ip", IPv4(), True, "NULL"),
+            Column("model_llm", String(), False)
+        )
+
+
+
+
+
