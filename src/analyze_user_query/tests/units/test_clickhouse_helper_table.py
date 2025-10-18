@@ -1,6 +1,7 @@
 import pytest
 from analyze_user_query.clickhouse_helper import (Array, Column, DateTime, FixedString, IPv4, Integer, String, Date, EngineType, Table)
 
+
 @pytest.mark.parametrize("table_name,engine,order_by,partition_by,primary_key,columns,expected_sql_parts", [
     (
         "analize_user_llm_query",
@@ -216,6 +217,27 @@ def test_len_order_by_column_less_then_primary_column(order_by, primary_key):
         )
 
 
+@pytest.mark.parametrize("name,type,nullable", [
+    ("text", String(), False),
+    ("date", Date(), False),
+]) 
+def test_add_existing_column(name, type, nullable):
+    table = Table(
+        "analize_user_llm_query",
+        EngineType.MERGETREE, 
+        ["date", "country_code", "language_code", "model_llm"],
+        "toYYYYMM(date)",
+        None,
+        Column("text", String(), False),
+        Column("date", Date(), False),
+        Column("themes", Array(FixedString(128)), False),
+        Column("language_code", FixedString(3), False),
+        Column("country_code", FixedString(3), True, "NULL"),
+        Column("user_ip", IPv4(), True, "NULL"),
+        Column("model_llm", String(), False)
+    )
+    with pytest.raises(ValueError, match="already exists"):
+        table.add_column(Column(name, type, nullable))
 
 
 
