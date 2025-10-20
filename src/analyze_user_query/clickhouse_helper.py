@@ -1,5 +1,5 @@
 import re
-from typing import List, Literal, Optional, Union, Any, Dict
+from typing import List, Literal, Optional, Tuple, Union, Any, Dict
 import enum
 
 class ColumnType:
@@ -201,6 +201,9 @@ class Column:
         return f"{self.name} {self.type}{nullability}{default}"
 
 class Table:
+    OPERATORS = [">", ">=", "<", "<=", "=", "IN", "IS"]
+    BOOLEAN_OPERATORS = ["AND", "OR"]
+    
     def __init__(self, 
         table_name: str,
         engine: EngineType = EngineType.MERGETREE,
@@ -286,10 +289,13 @@ class Table:
     def generate_sql_for_create(self) -> str:
         query = f'CREATE TABLE {self.table_name}'
         query += "\n("
-        for column in self.columns:
-            query += f"\n\t{str(column)}"
+        for i, column in enumerate(self.columns, 1):  
+            if len(self.columns) == i:
+                query += f"\n\t{str(column)}"
+            else:
+                query += f"\n\t{str(column)},"
         query += "\n)"
-        query += f"\nENGINE = {self.engine}"
+        query += f"\nENGINE = {self.engine.value}"
         
         if self.partition_by:
             query += f"\nPARTITION BY {self.partition_by}"
@@ -298,11 +304,67 @@ class Table:
             if isinstance(self.order_by, list): 
                 query += f"\nPRIMARY KEY ({', '.join(self.primary_key)})"
             else:
-                query += f"\nPRIMARY KEY {self.primary_key})"
+                query += f"\nPRIMARY KEY {self.primary_key}"
 
         if isinstance(self.order_by, list): 
             query += f"\nORDER BY ({', '.join(self.order_by)})"
         else:
-            query += f"\nORDER BY {self.order_by})"
+            query += f"\nORDER BY {self.order_by}"
         
+        return query
+    
+    def insert(self, values: List[tuple], columns: Optional[List[str]] = None) -> str:
+        if columns is None:
+            columns = [column.name for column in self.columns]
+        else:
+            for col in columns:
+                if col not in self._columns_dict:
+                    raise ValueError(f"Column '{col}' not found in table '{self.table_name}'")
+
+        if any(len(row) != len(columns) for row in values):
+            raise ValueError("Each row of values must match the number of specified columns")
+
+        columns_str = ", ".join(columns)
+        values_str = ", ".join(f"({', '.join(repr(value) for value in row)})" for row in values)
+
+        return f"INSERT INTO {self.table_name} ({columns_str}) VALUES {values_str}"
+    
+    def _parse_conditions(self, conditions):
+        parsed_conditions = []
+        for condition in conditions:
+            if isinstance(condition, tuple):
+                col, op, value = condition
+                if col not in self._columns_dict:
+                    raise ValueError(f"Column '{col}' not found in table '{self.table_name}'")
+                if op not in self.OPERATORS:
+                    raise ValueError(f"Invalid operator '{op}' in WHERE clause")
+                parsed_conditions.append(f"{col} {op} {repr(value)}")
+            elif isinstance(condition, list):
+                parsed_conditions.append(f"({self.parse_conditions(condition)})")
+            elif isinstance(condition, str) and condition.upper() in self.BOOLEAN_OPERATORS:
+                parsed_conditions.append(condition.upper())
+            else:
+                raise ValueError("Invalid condition in WHERE clause")
+        return " ".join(parsed_conditions)
+
+    def select(self, columns: Optional[List[str]],
+            where: Optional[List[Union[List[Union[Tuple[str, str, Any], str]], str]]] = None,
+            order_by: Optional[Union[str, List[str]]] = None
+        ) -> str:
+
+        for col in columns:
+            if col not in self._columns_dict:
+                raise ValueError(f"Column '{col}' not found in table '{self.table_name}'")
+        
+        query = f"SELECT {'*' if columns is None else ', '.join(columns)} FROM {self.table}"
+        
+        if where:
+            query += f" WHERE {self.parse_conditions(where)}"
+        
+        if order_by:
+            if isinstance(order_by, list):
+                query += f" ORDER BY {', '.join(order_by)}"
+            else:
+                query += f" ORDER BY {order_by}"
+
         return query
