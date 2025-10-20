@@ -216,7 +216,6 @@ def test_len_order_by_column_less_then_primary_column(order_by, primary_key):
             Column("model_llm", String(), False)
         )
 
-
 @pytest.mark.parametrize("name,type,nullable", [
     ("text", String(), False),
     ("date", Date(), False),
@@ -239,5 +238,40 @@ def test_add_existing_column(name, type, nullable):
     with pytest.raises(ValueError, match="already exists"):
         table.add_column(Column(name, type, nullable))
 
-
-
+@pytest.mark.parametrize("table_obj,sql_string", [
+    (
+        Table(
+            "analize_user_llm_query",
+            EngineType.MERGETREE, 
+            ["date", "country_code", "language_code", "model_llm"],
+            "toYYYYMM(date)",
+            None,
+            Column("text", String(), False),
+            Column("date", Date(), False),
+            Column("themes", Array(FixedString(128)), False),
+            Column("language_code", FixedString(3), False),
+            Column("country_code", FixedString(3), True, "NULL"),
+            Column("user_ip", IPv4(), True, "NULL"),
+            Column("model_llm", String(), False)
+        ),
+        """
+        CREATE TABLE analize_user_llm_query
+        (
+            text String NOT NULL,
+            date Date NOT NULL,
+            themes Array(FixedString(128)) NOT NULL,
+            language_code FixedString(3) NOT NULL,
+            country_code FixedString(3) NULL DEFAULT NULL,
+            user_ip IPv4 NULL DEFAULT NULL,
+            model_llm String NOT NULL
+        )
+        ENGINE = MergeTree
+        PARTITION BY toYYYYMM(date)
+        ORDER BY (date, country_code, language_code, model_llm)
+        """
+    )
+]) 
+def test_generate_sql_for_create(table_obj, sql_string): 
+    generate_sql = table_obj.generate_sql_for_create().strip()
+    sql_string = sql_string.strip()
+    assert generate_sql.split() == sql_string.split()
