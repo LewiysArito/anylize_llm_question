@@ -201,7 +201,7 @@ class Column:
         return f"{self.name} {self.type}{nullability}{default}"
 
 class Table:
-    OPERATORS = [">", ">=", "<", "<=", "=", "IN", "IS"]
+    OPERATORS = [">", ">=", "<", "<=", "=", "IN", "NOT IN", "IS", "NOT IS"]
     BOOLEAN_OPERATORS = ["AND", "OR"]
     
     def __init__(self, 
@@ -313,7 +313,7 @@ class Table:
         
         return query
     
-    def insert(self, values: List[tuple], columns: Optional[List[str]] = None) -> str:
+    def generate_sql_for_insert(self, values: List[tuple], columns: Optional[List[str]] = None) -> str:
         if columns is None:
             columns = [column.name for column in self.columns]
         else:
@@ -325,10 +325,13 @@ class Table:
             raise ValueError("Each row of values must match the number of specified columns")
 
         columns_str = ", ".join(columns)
-        values_str = ", ".join(f"({', '.join(repr(value) for value in row)})" for row in values)
+        query = f"INSERT INTO {self.table_name} ({columns_str})\n"
+        query += "VALUES"
+        values_str = ", ".join(f"\t\n({', '.join(repr(value) for value in row)})" for row in values).replace('None', 'NULL')
+        query += values_str
 
-        return f"INSERT INTO {self.table_name} ({columns_str}) VALUES {values_str}"
-    
+        return query
+
     def _parse_conditions(self, conditions):
         parsed_conditions = []
         for condition in conditions:
@@ -340,14 +343,14 @@ class Table:
                     raise ValueError(f"Invalid operator '{op}' in WHERE clause")
                 parsed_conditions.append(f"{col} {op} {repr(value)}")
             elif isinstance(condition, list):
-                parsed_conditions.append(f"({self.parse_conditions(condition)})")
+                parsed_conditions.append(f"({self._parse_conditions(condition)})")
             elif isinstance(condition, str) and condition.upper() in self.BOOLEAN_OPERATORS:
                 parsed_conditions.append(condition.upper())
             else:
                 raise ValueError("Invalid condition in WHERE clause")
         return " ".join(parsed_conditions)
 
-    def select(self, columns: Optional[List[str]],
+    def generate_sql_for_select(self, columns: Optional[List[str]],
             where: Optional[List[Union[List[Union[Tuple[str, str, Any], str]], str]]] = None,
             order_by: Optional[Union[str, List[str]]] = None
         ) -> str:
@@ -359,7 +362,7 @@ class Table:
         query = f"SELECT {'*' if columns is None else ', '.join(columns)} FROM {self.table}"
         
         if where:
-            query += f" WHERE {self.parse_conditions(where)}"
+            query += f" WHERE {self.parse_conditions(where)}".replace('None', 'NULL')
         
         if order_by:
             if isinstance(order_by, list):
