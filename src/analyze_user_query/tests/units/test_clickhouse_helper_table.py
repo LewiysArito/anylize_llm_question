@@ -275,3 +275,136 @@ def test_generate_sql_for_create(table_obj, sql_string):
     generate_sql = table_obj.generate_sql_for_create().strip()
     sql_string = sql_string.strip()
     assert generate_sql.split() == sql_string.split()
+
+
+
+@pytest.mark.parametrize("values,columns,sql_string", [
+    (
+        [("Hello world", "2025-10-20", ["theme1", "theme2"], "en", "US", "192.168.1.1", "gpt-4")],
+        None,
+        """
+        INSERT INTO analize_user_llm_query (text, date, themes, language_code, country_code, user_ip, model_llm) 
+        VALUES 
+            ('Hello world', '2025-10-20', ['theme1', 'theme2'], 'en', 'US', '192.168.1.1', 'gpt-4')
+        """
+    ),
+    (
+        [("Сколько нужно учить геометрию, чтобы ее хорошо понимать", "2025-10-22", ["geometry", "education", "duration"], "ru", "RU", "192.168.10.23", "gemeni-3.1"),
+        ("How many people like ice cream?", "2025-10-20", ["ice cream", "people"], "en", "FR", "192.168.1.10", "gemeni-3.1")],
+        None,
+        """
+        INSERT INTO analize_user_llm_query (text, date, themes, language_code, country_code, user_ip, model_llm) 
+        VALUES 
+            ('Сколько нужно учить геометрию, чтобы ее хорошо понимать', '2025-10-22', ['geometry', 'education', 'duration'], 'ru', 'RU', '192.168.10.23', 'gemeni-3.1'),
+            ('How many people like ice cream?', '2025-10-20', ['ice cream', 'people'], 'en', 'FR', '192.168.1.10', 'gemeni-3.1')
+        """
+    ),
+    (
+        [("Hello", "2025-10-20", "en", "gpt-4")],
+        ["text", "date", "language_code", "model_llm"],
+        """
+        INSERT INTO analize_user_llm_query (text, date, language_code, model_llm)
+            VALUES
+            ('Hello', '2025-10-20', 'en', 'gpt-4')
+        """
+    ),
+    (
+        [("Сколько дней в 2025 году?", "2025-10-20", ["theme"], "ru", None, None, "model")],
+        None,
+        """
+        INSERT INTO analize_user_llm_query (text, date, themes, language_code, country_code, user_ip, model_llm) 
+            VALUES
+            ('Сколько дней в 2025 году?', '2025-10-20', ['theme'], 'ru', NULL, NULL, 'model')
+        """
+    ),
+    (
+        [("Text", "2025-10-22", [], "eng", "FR", "192.168.1.20", "model")],
+        None,
+        """
+        INSERT INTO analize_user_llm_query (text, date, themes, language_code, country_code, user_ip, model_llm) 
+            VALUES 
+            ('Text', '2025-10-22', [], 'eng', 'FR', '192.168.1.20', 'model')
+        """
+    ),
+    (
+        [("O''Reilly", "2025-10-20", ["test"], "en", "US", "192.168.1.1", "gpt-4")],
+        None,
+        """
+        INSERT INTO analize_user_llm_query (text, date, themes, language_code, country_code, user_ip, model_llm) 
+            VALUES 
+            ("O''Reilly", '2025-10-20', ['test'], 'en', 'US', '192.168.1.1', 'gpt-4')
+        """
+    ),
+])
+def test_generate_sql_for_insert(values, columns, sql_string): 
+    table = Table(
+        "analize_user_llm_query",
+        EngineType.MERGETREE, 
+        ["date", "country_code", "language_code", "model_llm"],
+        "toYYYYMM(date)",
+        None,
+        Column("text", String(), False),
+        Column("date", Date(), False),
+        Column("themes", Array(FixedString(128)), False),
+        Column("language_code", FixedString(3), False),
+        Column("country_code", FixedString(3), True, "NULL"),
+        Column("user_ip", IPv4(), True, "NULL"),
+        Column("model_llm", String(), False)
+    )
+    generate_sql = table.generate_sql_for_insert(values, columns).strip()
+    sql_string = sql_string.strip()
+    
+    generate_sql_normalized = ' '.join(generate_sql.split())
+    sql_string_normalized = ' '.join(sql_string.split())
+
+    assert generate_sql_normalized == sql_string_normalized
+
+@pytest.mark.parametrize("values,columns", [
+    (
+        [("Hello world", "2025-10-20", ["theme1", "theme2"], "en", "US", "192.168.1.1", "gpt-4")],
+        ["text", "date", "language_code", "model"],
+    )
+])
+def test_column_not_found_in_table(values,columns):
+    table = Table(
+        "analize_user_llm_query",
+        EngineType.MERGETREE, 
+        ["date", "country_code", "language_code", "model_llm"],
+        "toYYYYMM(date)",
+        None,
+        Column("text", String(), False),
+        Column("date", Date(), False),
+        Column("themes", Array(FixedString(128)), False),
+        Column("language_code", FixedString(3), False),
+        Column("country_code", FixedString(3), True, "NULL"),
+        Column("user_ip", IPv4(), True, "NULL"),
+        Column("model_llm", String(), False)
+    )
+
+    with pytest.raises(ValueError, match="Column 'model' not found in table"):
+        table.generate_sql_for_insert(values, columns)
+
+@pytest.mark.parametrize("values,columns", [
+    (
+        [("Hello world", "2025-10-20", ["theme1", "theme2"], "en", "US", "192.168.1.1", "gpt-4")],
+        ["text", "date", "language_code", "model_llm"],
+    )
+])
+def test_generate_sql_for_insert_invalid_columns_count(values,columns):
+    table = Table(
+        "analize_user_llm_query",
+        EngineType.MERGETREE, 
+        ["date", "country_code", "language_code", "model_llm"],
+        "toYYYYMM(date)",
+        None,
+        Column("text", String(), False),
+        Column("date", Date(), False),
+        Column("themes", Array(FixedString(128)), False),
+        Column("language_code", FixedString(3), False),
+        Column("country_code", FixedString(3), True, "NULL"),
+        Column("user_ip", IPv4(), True, "NULL"),
+        Column("model_llm", String(), False)
+    )
+
+    with pytest.raises(ValueError, match="Each row of values must match the number of specified columns"):
+        table.generate_sql_for_insert(values, columns)
