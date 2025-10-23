@@ -170,6 +170,32 @@ class Array(ColumnType):
     def __str__(self):
         return f"Array({self.item_type})"
 
+class Function:
+    def _parse_function(self, text:str):
+        pattern = r'(\w+)\(([^)]*)\)'
+        match = re.search(pattern, text.strip())
+        
+        if not match:
+            return None, []
+        
+        function_name = match.group(1)
+        args_str = match.group(2)
+        
+        arguments = re.findall(r'[a-zA-Z_]\w*', args_str)
+        
+        return function_name, arguments
+    
+    def __init__(self, value):
+        function_name, arguments = self._parse_function(str(value))
+        if function_name is None:
+            raise ValueError(f"Invalid function format: {value}")
+        self.value = value
+        self.function_name = function_name 
+        self.arguments = arguments
+
+    def __str__(self):
+        return self.value
+
 class Column:
     def __init__(self, 
             name: str,
@@ -208,7 +234,7 @@ class Table:
         table_name: str,
         engine: EngineType = EngineType.MERGETREE,
         order_by: Optional[Union[str, List[str]]] = None,
-        partition_by: Optional[str] = None,
+        partition_by: Optional[Union[str|Function]] = None,
         primary_key: Optional[Union[str, List[str]]] = None,
         *columns: Column
     ):
@@ -254,9 +280,8 @@ class Table:
                     raise ValueError(f"Primary key column '{key}' cannot be nullable")
 
         if self.partition_by:
-            search = re.search(r'\(([^)]+)\)', self.partition_by)
-        
-            text = search.group(1) if search else self.partition_by  
+            text = self.partition_by.arguments[0] if isinstance(self.partition_by, Function) else self.partition_by              
+
             if not any(name == text for name in [column.name for column in self.columns]):
                 raise ValueError(f"Partition by column '{text}' cannot be used") 
 
@@ -340,34 +365,70 @@ class Table:
                 if col not in self._columns_dict:
                     raise ValueError(f"Column '{col}' not found in table '{self.table_name}'")
                 if op not in self.OPERATORS:
-                    raise ValueError(f"Invalid operator '{op}' in WHERE clause")
-                parsed_conditions.append(f"{col} {op} {repr(value)}")
+                    raise ValueError(f"Invalid operator '{op}' in WHERE or HAVING clause")
+                parsed_conditions.append(f"{col} {op} {repr(value) if not isinstance(value, Function) else value}")
             elif isinstance(condition, list):
                 parsed_conditions.append(f"({self._parse_conditions(condition)})")
             elif isinstance(condition, str) and condition.upper() in self.BOOLEAN_OPERATORS:
                 parsed_conditions.append(condition.upper())
             else:
-                raise ValueError("Invalid condition in WHERE clause")
+                raise ValueError("Invalid condition in WHERE OR HAVING clause")
         return " ".join(parsed_conditions)
 
-    def generate_sql_for_select(self, columns: Optional[List[str]],
-            where: Optional[List[Union[List[Union[Tuple[str, str, Any], str]], str]]] = None,
-            order_by: Optional[Union[str, List[str]]] = None
-        ) -> str:
-
-        for col in columns:
-            if col not in self._columns_dict:
-                raise ValueError(f"Column '{col}' not found in table '{self.table_name}'")
+    def generate_sql_for_select(self, 
+        columns: Optional[List[str]] = None,
+        where: Optional[Union[List[Union[Tuple[str, str, Any], str]], str]] = None,
+        group_by: Optional[List[str]] = None,
+        having: Optional[Union[List[Union[Tuple[str, str, Any], str]], str]] = None, 
+        order_by: Optional[List[str]] = None,
+        limit: Optional[int] = None
+    ) -> str:
+    
+        self._validate_select_parameters(columns, group_by, order_by, limit)
         
-        query = f"SELECT {'*' if columns is None else ', '.join(columns)} FROM {self.table}"
+        select_expr = '*' if not columns else ', '.join(columns)
+        query = f"SELECT {select_expr} FROM {self.table_name}"
         
         if where:
-            query += f" WHERE {self.parse_conditions(where)}".replace('None', 'NULL')
+            query += f"\nWHERE {self._parse_conditions(where)}"
+        
+        if group_by:
+            query += f"\nGROUP BY {', '.join(group_by)}"
+        
+        if having:
+            if not group_by:
+                raise ValueError("HAVING clause requires GROUP BY clause")
+            query += f"\nHAVING {self._parse_conditions(having)}"
         
         if order_by:
-            if isinstance(order_by, list):
-                query += f" ORDER BY {', '.join(order_by)}"
-            else:
-                query += f" ORDER BY {order_by}"
-
+            order_expr = order_by[0] if len(order_by) == 1 else ', '.join(order_by)
+            query += f"\nORDER BY {order_expr}"
+    
+        if limit is not None:
+            query += f"\nLIMIT {limit}"
+        
         return query
+
+    def _validate_select_parameters(self, columns: Optional[List[str]], 
+        group_by: Optional[List[str]], 
+        order_by: Optional[Union[str, List[str]]], 
+        limit: Optional[int]):
+        
+        if columns:
+            for col in columns:
+                if col not in self._columns_dict:
+                    raise ValueError(f"Column '{col}' not found in table '{self.table_name}'")
+        if group_by:
+            for col in group_by:
+                if col not in self._columns_dict:
+                    raise ValueError(f"Group by column '{col}' not found in table '{self.table_name}'")
+        
+        if order_by:
+            columns_to_check = [order_by] if isinstance(order_by, str) else order_by
+            for col in columns_to_check:
+                clean_col = col.split()[0].strip()
+                if clean_col not in self._columns_dict:
+                    raise ValueError(f"Order by column '{clean_col}' not found in table '{self.table_name}'")
+        
+        if limit is not None and limit < 0:
+            raise ValueError("LIMIT cannot be negative")
