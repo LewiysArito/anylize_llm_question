@@ -1,5 +1,5 @@
 import pytest
-from analyze_user_query.clickhouse_helper import (Array, Column, DateTime, FixedString, IPv4, Integer, String, Date, EngineType, Table)
+from analyze_user_query.clickhouse_helper import (Array, Column, DateTime, FixedString, IPv4, Integer, String, Date, EngineType, Table, Function)
 
 
 @pytest.mark.parametrize("table_name,engine,order_by,partition_by,primary_key,columns,expected_sql_parts", [
@@ -7,7 +7,7 @@ from analyze_user_query.clickhouse_helper import (Array, Column, DateTime, Fixed
         "analize_user_llm_query",
         EngineType.MERGETREE,  
         ["date", "country_code", "language_code", "model_llm"],
-        "toYYYYMM(date)",
+        Function("toYYYYMM(date)"),
         None,
         [
             Column("text", String(), False),
@@ -24,7 +24,7 @@ from analyze_user_query.clickhouse_helper import (Array, Column, DateTime, Fixed
         "analize_user_action",
         EngineType.MERGETREE,
         ["event_date", "event_name", "country_code"],
-        "toYYYYMM(event_date)",
+        Function("toYYYYMM(event_date)"),
         None,
         [
             Column("event_date", Date(), False),
@@ -49,7 +49,7 @@ def test_column_creation_and_string_value(table_name,engine,order_by,partition_b
     assert table.table_name == table_name
     assert table.engine == engine
     assert table.order_by == order_by
-    assert table.partition_by ==  partition_by
+    assert table.partition_by == partition_by
     assert table.primary_key ==  primary_key
     
     assert str(table) == expected_sql_parts
@@ -60,7 +60,7 @@ def test_empty_table_name():
             "",
             EngineType.MERGETREE,  
             ["date", "country_code", "language_code", "model_llm"],
-            "toYYYYMM(date)",
+            Function("toYYYYMM(date)"),
             None,
             Column("text", String(), False),
             Column("date", Date(), False),
@@ -80,7 +80,7 @@ def test_none_engine_type_value(engine):
             "analize_user_llm_query",
             engine, 
             ["date", "country_code", "language_code", "model_llm"],
-            "toYYYYMM(date)",
+            Function("toYYYYMM(date)"),
             None,
             Column("text", String(), False),
             Column("date", Date(), False),
@@ -122,7 +122,7 @@ def test_primary_key_not_found_between_column(primary_key):
             "analize_user_llm_query",
             EngineType.MERGETREE, 
             ["date", "country_code", "language_code", "model_llm"],
-            "toYYYYMM(date)",
+            Function("toYYYYMM(data)"),
             primary_key,
             Column("text", String(), False),
             Column("date", Date(), False),
@@ -143,7 +143,7 @@ def test_primary_key_for_not_null_column(primary_key):
             "analize_user_llm_query",
             EngineType.MERGETREE, 
             ["date", "country_code", "language_code", "model_llm"],
-            "toYYYYMM(date)",
+            Function("toYYYYMM(date)"),
             primary_key,
             Column("text", String(), False),
             Column("date", Date(), False),
@@ -155,10 +155,10 @@ def test_primary_key_for_not_null_column(primary_key):
         )
 
 @pytest.mark.parametrize("partition_by", [
-    ("toYYYYMM(datetime)"), 
+    (Function("toYYYYMM(data)")), 
     ("month"),
 ])
-def test_primary_key_not_found_between_column(partition_by):
+def test_partition_by_not_found_between_column(partition_by):
     with pytest.raises(ValueError, match="cannot be used"):
         table = Table(
             "analize_user_llm_query",
@@ -185,7 +185,7 @@ def test_order_by_not_found_between_column(order_by):
             "analize_user_llm_query",
             EngineType.MERGETREE, 
             order_by,
-            "toYYYYMM(date)",
+            Function("toYYYYMM(date)"),
             None,
             Column("text", String(), False),
             Column("date", Date(), False),
@@ -205,7 +205,7 @@ def test_len_order_by_column_less_then_primary_column(order_by, primary_key):
             "analize_user_llm_query",
             EngineType.MERGETREE, 
             order_by,
-            "toYYYYMM(date)",
+            Function("toYYYYMM(date)"),
             primary_key,
             Column("text", String(), False),
             Column("date", Date(), False),
@@ -225,7 +225,7 @@ def test_add_existing_column(name, type, nullable):
         "analize_user_llm_query",
         EngineType.MERGETREE, 
         ["date", "country_code", "language_code", "model_llm"],
-        "toYYYYMM(date)",
+        Function("toYYYYMM(date)"),
         None,
         Column("text", String(), False),
         Column("date", Date(), False),
@@ -244,7 +244,7 @@ def test_add_existing_column(name, type, nullable):
             "analize_user_llm_query",
             EngineType.MERGETREE, 
             ["date", "country_code", "language_code", "model_llm"],
-            "toYYYYMM(date)",
+            Function("toYYYYMM(date)"),
             None,
             Column("text", String(), False),
             Column("date", Date(), False),
@@ -275,8 +275,6 @@ def test_generate_sql_for_create(table_obj, sql_string):
     generate_sql = table_obj.generate_sql_for_create().strip()
     sql_string = sql_string.strip()
     assert generate_sql.split() == sql_string.split()
-
-
 
 @pytest.mark.parametrize("values,columns,sql_string", [
     (
@@ -341,7 +339,7 @@ def test_generate_sql_for_insert(values, columns, sql_string):
         "analize_user_llm_query",
         EngineType.MERGETREE, 
         ["date", "country_code", "language_code", "model_llm"],
-        "toYYYYMM(date)",
+        Function("toYYYYMM(date)"),
         None,
         Column("text", String(), False),
         Column("date", Date(), False),
@@ -365,12 +363,12 @@ def test_generate_sql_for_insert(values, columns, sql_string):
         ["text", "date", "language_code", "model"],
     )
 ])
-def test_column_not_found_in_table(values,columns):
+def test_generate_sql_for_insert_column_not_found_in_table(values,columns):
     table = Table(
         "analize_user_llm_query",
         EngineType.MERGETREE, 
         ["date", "country_code", "language_code", "model_llm"],
-        "toYYYYMM(date)",
+        Function("toYYYYMM(date)"),
         None,
         Column("text", String(), False),
         Column("date", Date(), False),
@@ -395,7 +393,7 @@ def test_generate_sql_for_insert_invalid_columns_count(values,columns):
         "analize_user_llm_query",
         EngineType.MERGETREE, 
         ["date", "country_code", "language_code", "model_llm"],
-        "toYYYYMM(date)",
+        Function("toYYYYMM(date)"),
         None,
         Column("text", String(), False),
         Column("date", Date(), False),
@@ -408,3 +406,31 @@ def test_generate_sql_for_insert_invalid_columns_count(values,columns):
 
     with pytest.raises(ValueError, match="Each row of values must match the number of specified columns"):
         table.generate_sql_for_insert(values, columns)
+
+@pytest.mark.parametrize("columns,where,group_by,having,order_by,limit,sql_string", [
+    (None, None, None, None, None, None, "SELECT * FROM analize_user_llm_query"),
+    (["text", "language_code", "country_code"], None, None, None, None, None, "SELECT text, language_code, country_code FROM analize_user_llm_query"),
+    (None, [("date", "=", Function("today()"))], None, None, None, None, "SELECT * FROM analize_user_llm_query WHERE date = today()")
+])
+def test_generate_sql_for_select(columns, where, group_by, having, order_by, limit, sql_string): 
+    table = Table(
+        "analize_user_llm_query",
+        EngineType.MERGETREE, 
+        ["date", "country_code", "language_code", "model_llm"],
+        Function("toYYYYMM(date)"),
+        None,
+        Column("text", String(), False),
+        Column("date", Date(), False),
+        Column("themes", Array(FixedString(128)), False),
+        Column("language_code", FixedString(3), False),
+        Column("country_code", FixedString(3), True, "NULL"),
+        Column("user_ip", IPv4(), True, "NULL"),
+        Column("model_llm", String(), False)
+    )
+    generate_sql = table.generate_sql_for_select(columns,where,group_by, having,order_by,limit).strip()
+    sql_string = sql_string.strip()
+    
+    generate_sql_normalized = ' '.join(generate_sql.split())
+    sql_string_normalized = ' '.join(sql_string.split())
+
+    assert generate_sql_normalized == sql_string_normalized
