@@ -227,7 +227,7 @@ class Column:
         return f"{self.name} {self.type}{nullability}{default}"
 
 class Table:
-    OPERATORS = [">", ">=", "<", "<=", "=", "IN", "NOT IN", "IS", "NOT IS"]
+    OPERATORS = [">", ">=", "<", "<=", "=", "<>", "!=", "IN", "NOT IN", "IS", "NOT IS"]
     BOOLEAN_OPERATORS = ["AND", "OR"]
     
     def __init__(self, 
@@ -326,7 +326,7 @@ class Table:
             query += f"\nPARTITION BY {self.partition_by}"
         
         if self.primary_key:
-            if isinstance(self.order_by, list): 
+            if isinstance(self.primary_key, list): 
                 query += f"\nPRIMARY KEY ({', '.join(self.primary_key)})"
             else:
                 query += f"\nPRIMARY KEY {self.primary_key}"
@@ -410,25 +410,25 @@ class Table:
         return query
 
     def _validate_select_parameters(self, columns: Optional[List[str]], 
-        group_by: Optional[List[str]], 
-        order_by: Optional[Union[str, List[str]]], 
+        group_by: Optional[List[str]],  
+        order_by: Optional[Union[str, List[str]]],
         limit: Optional[int]):
         
         if columns:
             for col in columns:
                 if col not in self._columns_dict:
                     raise ValueError(f"Column '{col}' not found in table '{self.table_name}'")
+        
         if group_by:
             for col in group_by:
                 if col not in self._columns_dict:
                     raise ValueError(f"Group by column '{col}' not found in table '{self.table_name}'")
-        
+
         if order_by:
             columns_to_check = [order_by] if isinstance(order_by, str) else order_by
             for col in columns_to_check:
-                clean_col = col.split()[0].strip()
-                if clean_col not in self._columns_dict:
-                    raise ValueError(f"Order by column '{clean_col}' not found in table '{self.table_name}'")
+                if col not in self._columns_dict:
+                    raise ValueError(f"Order by column '{col}' not found in table '{self.table_name}'")
         
         if limit is not None and limit < 0:
             raise ValueError("LIMIT cannot be negative")

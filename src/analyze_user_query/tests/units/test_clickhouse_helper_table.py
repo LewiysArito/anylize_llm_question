@@ -1,6 +1,6 @@
 import pytest
 from analyze_user_query.clickhouse_helper import (Array, Column, DateTime, FixedString, IPv4, Integer, String, Date, EngineType, Table, Function)
-
+from analyze_user_query.tests.units.confest import sample_analize_user_llm_query_table
 
 @pytest.mark.parametrize("table_name,engine,order_by,partition_by,primary_key,columns,expected_sql_parts", [
     (
@@ -334,21 +334,8 @@ def test_generate_sql_for_create(table_obj, sql_string):
         """
     ),
 ])
-def test_generate_sql_for_insert(values, columns, sql_string): 
-    table = Table(
-        "analize_user_llm_query",
-        EngineType.MERGETREE, 
-        ["date", "country_code", "language_code", "model_llm"],
-        Function("toYYYYMM(date)"),
-        None,
-        Column("text", String(), False),
-        Column("date", Date(), False),
-        Column("themes", Array(FixedString(128)), False),
-        Column("language_code", FixedString(3), False),
-        Column("country_code", FixedString(3), True, "NULL"),
-        Column("user_ip", IPv4(), True, "NULL"),
-        Column("model_llm", String(), False)
-    )
+def test_generate_insert(values, columns, sql_string, sample_analize_user_llm_query_table): 
+    table = sample_analize_user_llm_query_table
     generate_sql = table.generate_sql_for_insert(values, columns).strip()
     sql_string = sql_string.strip()
     
@@ -363,21 +350,8 @@ def test_generate_sql_for_insert(values, columns, sql_string):
         ["text", "date", "language_code", "model"],
     )
 ])
-def test_generate_sql_for_insert_column_not_found_in_table(values,columns):
-    table = Table(
-        "analize_user_llm_query",
-        EngineType.MERGETREE, 
-        ["date", "country_code", "language_code", "model_llm"],
-        Function("toYYYYMM(date)"),
-        None,
-        Column("text", String(), False),
-        Column("date", Date(), False),
-        Column("themes", Array(FixedString(128)), False),
-        Column("language_code", FixedString(3), False),
-        Column("country_code", FixedString(3), True, "NULL"),
-        Column("user_ip", IPv4(), True, "NULL"),
-        Column("model_llm", String(), False)
-    )
+def test_generate_insert_column_not_found_in_table(values,columns, sample_analize_user_llm_query_table):
+    table = sample_analize_user_llm_query_table
 
     with pytest.raises(ValueError, match="Column 'model' not found in table"):
         table.generate_sql_for_insert(values, columns)
@@ -388,21 +362,8 @@ def test_generate_sql_for_insert_column_not_found_in_table(values,columns):
         ["text", "date", "language_code", "model_llm"],
     )
 ])
-def test_generate_sql_for_insert_invalid_columns_count(values,columns):
-    table = Table(
-        "analize_user_llm_query",
-        EngineType.MERGETREE, 
-        ["date", "country_code", "language_code", "model_llm"],
-        Function("toYYYYMM(date)"),
-        None,
-        Column("text", String(), False),
-        Column("date", Date(), False),
-        Column("themes", Array(FixedString(128)), False),
-        Column("language_code", FixedString(3), False),
-        Column("country_code", FixedString(3), True, "NULL"),
-        Column("user_ip", IPv4(), True, "NULL"),
-        Column("model_llm", String(), False)
-    )
+def test_generate_insert_invalid_columns_count(values,columns, sample_analize_user_llm_query_table):
+    table = sample_analize_user_llm_query_table
 
     with pytest.raises(ValueError, match="Each row of values must match the number of specified columns"):
         table.generate_sql_for_insert(values, columns)
@@ -435,21 +396,8 @@ def test_generate_sql_for_insert_invalid_columns_count(values,columns):
     ),
     (None, None, None, None, ["date"], 1, "SELECT * FROM analize_user_llm_query ORDER BY date LIMIT 1"),
 ])
-def test_generate_sql_for_select(columns, where, group_by, having, order_by, limit, sql_string): 
-    table = Table(
-        "analize_user_llm_query",
-        EngineType.MERGETREE, 
-        ["date", "country_code", "language_code", "model_llm"],
-        Function("toYYYYMM(date)"),
-        None,
-        Column("text", String(), False),
-        Column("date", Date(), False),
-        Column("themes", Array(FixedString(128)), False),
-        Column("language_code", FixedString(3), False),
-        Column("country_code", FixedString(3), True, "NULL"),
-        Column("user_ip", IPv4(), True, "NULL"),
-        Column("model_llm", String(), False)
-    )
+def test_generate_select(columns, where, group_by, having, order_by, limit, sql_string, sample_analize_user_llm_query_table): 
+    table = sample_analize_user_llm_query_table
     generate_sql = table.generate_sql_for_select(columns,where,group_by, having,order_by,limit).strip()
     sql_string = sql_string.strip()
     
@@ -457,3 +405,86 @@ def test_generate_sql_for_select(columns, where, group_by, having, order_by, lim
     sql_string_normalized = ' '.join(sql_string.split())
 
     assert generate_sql_normalized == sql_string_normalized
+
+@pytest.mark.parametrize("columns,error_col", [
+    (["data"], "data"),
+    (["language", "date"], "language")
+])
+def test_generate_select_add_not_exist_column(columns, error_col, sample_analize_user_llm_query_table):
+    table = sample_analize_user_llm_query_table
+    
+    with pytest.raises(ValueError, match=f"Column '{error_col}' not found in table '{table.table_name}'"):
+        table.generate_sql_for_select(columns)
+
+@pytest.mark.parametrize("group_by,error_col", [
+    (["data"], "data"),
+    (["language", "date"], "language")
+])
+def test_generate_select_group_by_col_not_exist(group_by, error_col, sample_analize_user_llm_query_table):
+    table = sample_analize_user_llm_query_table
+    
+    with pytest.raises(ValueError, match=f"Group by column '{error_col}' not found in table '{table.table_name}'"):
+        table.generate_sql_for_select(group_by=group_by)
+
+@pytest.mark.parametrize("order_by,error_col", [
+    (["data", "language_code"], "data"),
+    ("data", "data"),
+])
+def test_generate_select_order_by_col_not_exist(order_by, error_col, sample_analize_user_llm_query_table):
+    table = sample_analize_user_llm_query_table
+    
+    with pytest.raises(ValueError, match=f"Order by column '{error_col}' not found in table '{table.table_name}'"):
+        table.generate_sql_for_select(order_by=order_by)
+
+def test_generate_select_limit_negative(sample_analize_user_llm_query_table):
+    table = sample_analize_user_llm_query_table
+    
+    with pytest.raises(ValueError, match="LIMIT cannot be negative"):
+        table.generate_sql_for_select(limit=-1)
+
+@pytest.mark.parametrize("where,error_col", [
+    (
+        [[("data", ">", "2025-01-01"), "AND", ("country_code", "=", "US")], "OR", [("model_llm", "=", "gpt-4"), "OR", ("model_llm", "=", "gemeni-3.1")]],
+        "data"
+    ),
+    (
+        [[("date", ">", "2025-01-01"), "AND", ("country", "=", "US")], "OR", [("model_llm", "=", "gpt-4"), "OR", ("model_llm", "=", "gemeni-3.1")]],
+        "country"
+    ),
+])
+def test_generate_select_where_column_not_exist(where, error_col, sample_analize_user_llm_query_table):
+    table = sample_analize_user_llm_query_table
+    
+    with pytest.raises(ValueError, match=f"Column '{error_col}' not found in table '{table.table_name}'"):
+        table.generate_sql_for_select(where=where)
+
+
+@pytest.mark.parametrize("where,error_operation", [
+    (
+        [[("date", "/", "2025-01-01"), "AND", ("country_code", "=", "US")], "OR", [("model_llm", "=", "gpt-4"), "OR", ("model_llm", "=", "gemeni-3.1")]],
+        "/"
+    ),
+    (
+        [[("date", "!=!", "2025-01-01"), "AND", ("country_code", "=", "US")], "OR", [("model_llm", "=", "gpt-4"), "OR", ("model_llm", "=", "gemeni-3.1")]],
+        "!=!"
+    ),
+])
+def test_generate_select_where_column_operation_not_exist(where, error_operation, sample_analize_user_llm_query_table):
+    table = sample_analize_user_llm_query_table
+    
+    with pytest.raises(ValueError, match=f"Invalid operator '{error_operation}' in WHERE or HAVING clause"):
+        table.generate_sql_for_select(where=where)
+
+@pytest.mark.parametrize("where", [
+    ([[{"col": "date", "op": "=", "value":"2025-01-01"}, "AND", ("country_code", "=", "US")], "OR", [("model_llm", "=", "gpt-4"), "OR", ("model_llm", "=", "gemeni-3.1")]])
+])
+def test_generate_select_where_(where, sample_analize_user_llm_query_table):
+    table = sample_analize_user_llm_query_table
+    
+    with pytest.raises(ValueError, match=f"Invalid condition in WHERE OR HAVING clause"):
+        table.generate_sql_for_select(where=where)
+
+"""
+NOTE: HAVING generation uses the same condition parsing/rendering as WHERE in
+Table.generate_sql_for_select().
+"""
