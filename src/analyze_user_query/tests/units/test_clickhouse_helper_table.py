@@ -410,7 +410,30 @@ def test_generate_sql_for_insert_invalid_columns_count(values,columns):
 @pytest.mark.parametrize("columns,where,group_by,having,order_by,limit,sql_string", [
     (None, None, None, None, None, None, "SELECT * FROM analize_user_llm_query"),
     (["text", "language_code", "country_code"], None, None, None, None, None, "SELECT text, language_code, country_code FROM analize_user_llm_query"),
-    (None, [("date", "=", Function("today()"))], None, None, None, None, "SELECT * FROM analize_user_llm_query WHERE date = today()")
+    (None, [("date", "=", Function("today()"))], None, None, None, None, "SELECT * FROM analize_user_llm_query WHERE date = today()"),
+    (None, [("date", "=", "2025-05-12")], None, None, None, None, "SELECT * FROM analize_user_llm_query WHERE date = '2025-05-12'"),
+    (
+        None,
+        [[("date", ">", "2025-01-01"), "AND", ("country_code", "=", "US")], "OR", [("model_llm", "=", "gpt-4"), "OR", ("model_llm", "=", "gemeni-3.1")]],
+        None, None, None, None,
+        "SELECT * FROM analize_user_llm_query WHERE (date > '2025-01-01' AND country_code = 'US') OR (model_llm = 'gpt-4' OR model_llm = 'gemeni-3.1')"
+    ),
+    (
+        ["language_code", "model_llm"],
+        None,
+        ["language_code"],
+        [("model_llm", "=", "gpt-3.5")],
+        ["language_code"],
+        5,
+        "SELECT language_code, model_llm FROM analize_user_llm_query GROUP BY language_code HAVING model_llm = 'gpt-3.5' ORDER BY language_code LIMIT 5"
+    ),
+    (
+        None,
+        [("language_code", "IN", ["ru", "en"])],
+        None, None, None, None,
+        "SELECT * FROM analize_user_llm_query WHERE language_code IN ['ru', 'en']"
+    ),
+    (None, None, None, None, ["date"], 1, "SELECT * FROM analize_user_llm_query ORDER BY date LIMIT 1"),
 ])
 def test_generate_sql_for_select(columns, where, group_by, having, order_by, limit, sql_string): 
     table = Table(
