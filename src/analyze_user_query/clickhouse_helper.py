@@ -1,6 +1,9 @@
 import re
-from typing import List, Literal, Optional, Tuple, Union, Any, Dict
 import enum
+from typing import List, Literal, Optional, Tuple, Union, Any, Dict, Type, TypeVar
+from dataclasses import fields, is_dataclass
+
+T = TypeVar("T")
 
 class ColumnType:
     pass
@@ -432,3 +435,29 @@ class Table:
         
         if limit is not None and limit < 0:
             raise ValueError("LIMIT cannot be negative")
+
+class  Mapper:
+    def __init__(self, table: Table, model_cls: Type[T]):
+        if not is_dataclass(model_cls):
+            raise TypeError("Argument model_cls must be a dataclass")
+        self.table = table
+        self.model_cls = model_cls
+    
+        table_columns = [col.name for col in table.columns]
+        model_fields = [f.name for f in fields(model_cls)]
+        self._mapping = [c for c in table_columns if c in model_fields]
+
+        if not self._mapping:
+            raise ValueError(f"No overlapping fields between table '{table.table_name}' and model {model_cls.__name__}")
+
+    def row_to_model(self, row: Tuple[Any, ...]) -> T:
+        data = {}
+        for i, col_name in enumerate(self._mapping):
+            data[col_name] = row[i]
+        return self.model_cls(**data)
+
+    def model_to_tuple(self, obj: T) -> Tuple[Any, ...]:
+        return tuple(getattr(obj, col) for col in self._mapping)
+
+    def models_to_tuples(self, objs: List[T]) -> List[Tuple[Any, ...]]:
+        return [self.model_to_tuple(o) for o in objs]
