@@ -314,8 +314,8 @@ class Table:
         self.columns.append(column)
         self._columns_dict[column.name] = column
 
-    def generate_sql_for_create(self) -> str:
-        query = f'CREATE TABLE {self.table_name}'
+    def generate_sql_for_create(self, if_not_exists=False) -> str:
+        query = f'CREATE TABLE {"IF NOT EXISTS " if if_not_exists else ""}{self.table_name}'
         query += "\n("
         for i, column in enumerate(self.columns, 1):  
             if len(self.columns) == i:
@@ -436,7 +436,7 @@ class Table:
         if limit is not None and limit < 0:
             raise ValueError("LIMIT cannot be negative")
 
-class  Mapper:
+class Mapper:
     def __init__(self, table: Table, model_cls: Type[T]):
         if not is_dataclass(model_cls):
             raise TypeError("Argument model_cls must be a dataclass")

@@ -1,5 +1,5 @@
 import pytest
-from analyze_user_query.clickhouse_helper import (Array, Column, DateTime, FixedString, IPv4, Integer, String, Date, EngineType, Table, Function)
+from analyze_user_query.clickhouse_helper import (UUID, Array, Column, DateTime, FixedString, IPv4, Integer, String, Date, EngineType, Table, Function)
 from analyze_user_query.tests.units.confest import sample_analize_user_llm_query_table
 
 @pytest.mark.parametrize("table_name,engine,order_by,partition_by,primary_key,columns,expected_sql_parts", [
@@ -238,12 +238,12 @@ def test_add_existing_column(name, type, nullable):
     with pytest.raises(ValueError, match="already exists"):
         table.add_column(Column(name, type, nullable))
 
-@pytest.mark.parametrize("table_obj,sql_string", [
+@pytest.mark.parametrize("table_obj,if_not_exists,sql_string", [
     (
         Table(
             "analize_user_llm_query",
             EngineType.MERGETREE, 
-            ["date", "country_code", "language_code", "model_llm"],
+            ["date", "language_code", "model_llm"],
             Function("toYYYYMM(date)"),
             None,
             Column("text", String(), False),
@@ -254,6 +254,8 @@ def test_add_existing_column(name, type, nullable):
             Column("user_ip", IPv4(), True, "NULL"),
             Column("model_llm", String(), False)
         ),
+        False
+        ,
         """
         CREATE TABLE analize_user_llm_query
         (
@@ -267,12 +269,37 @@ def test_add_existing_column(name, type, nullable):
         )
         ENGINE = MergeTree
         PARTITION BY toYYYYMM(date)
-        ORDER BY (date, country_code, language_code, model_llm)
+        ORDER BY (date, language_code, model_llm)
+        """
+    ),
+    (
+        Table(
+            "user_action",
+            EngineType.MERGETREE, 
+            ["date", "action"],
+            Function("toYYYYMM(date)"),
+            None,
+            Column("user_id", UUID(), False),
+            Column("date", Date(), False),
+            Column("action", String(), False),
+        ),
+        True
+        ,
+        """
+        CREATE TABLE IF NOT EXISTS user_action
+        (
+            user_id UUID NOT NULL,
+            date Date NOT NULL,
+            action String NOT NULL
+        )
+        ENGINE = MergeTree
+        PARTITION BY toYYYYMM(date)
+        ORDER BY (date, action)
         """
     )
 ]) 
-def test_generate_sql_for_create(table_obj, sql_string): 
-    generate_sql = table_obj.generate_sql_for_create().strip()
+def test_generate_sql_for_create(table_obj,if_not_exists,sql_string): 
+    generate_sql = table_obj.generate_sql_for_create(if_not_exists).strip()
     sql_string = sql_string.strip()
     assert generate_sql.split() == sql_string.split()
 
