@@ -4,9 +4,6 @@ from typing import List, Optional
 from uuid import UUID
 from ipaddress import IPv4Address
 
-class Analytic:
-    pass
-
 @dataclass(frozen=True)
 class DataUserQuery(unsafe_hash=True):
     event_id: UUID

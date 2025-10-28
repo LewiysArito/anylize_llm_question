@@ -36,9 +36,9 @@ def get_llm_url_and_max_token():
     base_url = f"{"https" if secure else "http"}://{host}:{port}"
     return dict(base_url=base_url, max_tokens=max_tokens)
 
-def get_clickhouse_data():
+def get_clickhouse_settings():
     host = os.environ.get("CLICKHOUSE_HOST", "localhost")
-    port = os.environ.get("CLICKHOUSE_PORT", 8123)
+    port = int(os.environ.get("CLICKHOUSE_PORT", 8123))
     username = os.environ.get("CLICKHOUSE_USERNAME", "clickhouse_user")
     password = os.environ.get("CLICKHOUSE_PASSWORD", "clickhouse_password")
     
