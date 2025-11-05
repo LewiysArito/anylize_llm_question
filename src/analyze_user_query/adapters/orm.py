@@ -4,8 +4,8 @@ from src.analyze_user_query.clickhouse_helper import (
     Array, Column, Date, EngineType, FixedString, Function, IPv4, Mapper, String, Table, UUID  
 )
 
-analize_user_llm_query = Table(
-    "analize_user_llm_query",
+analyze_user_llm_query = Table(
+    "analyze_user_llm_query",
     EngineType.MERGETREE, 
     ["date", "country_code", "language_code", "model_llm"],
     Function("toYYYYMM(date)"),
@@ -21,7 +21,7 @@ analize_user_llm_query = Table(
 )
 
 def start_mappers() -> Tuple[Mapper, ...]:
-    analize_user_llm_query_mapper = Mapper(model.AnalyzedUserQuery, analize_user_llm_query)
-    return (analize_user_llm_query_mapper,)
+    analyze_user_llm_query_mapper = Mapper(model.AnalyzedUserQuery, analyze_user_llm_query)
+    return (analyze_user_llm_query_mapper,)
 
-analize_user_llm_query_mapper,  = start_mappers()
+analyze_user_llm_query_mapper,  = start_mappers()

@@ -19,7 +19,7 @@ async def handle_publish_user_query(
         str(command.created_at)
     )
     await publisher.publish_one(
-        "llm_anylize",
+        "llm_analyze",
         integration_event
     )
 

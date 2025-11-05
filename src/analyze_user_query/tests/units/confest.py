@@ -4,9 +4,9 @@ from analyze_user_query.clickhouse_helper import (
 )
 
 @pytest.fixture(scope="module")
-def sample_analize_user_llm_query_table():
+def sample_analyze_user_llm_query_table():
     return Table(
-        "analize_user_llm_query",
+        "analyze_user_llm_query",
         EngineType.MERGETREE,
         ["date", "country_code", "language_code", "model_llm"],
         Function("toYYYYMM(date)"),

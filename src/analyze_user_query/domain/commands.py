@@ -7,7 +7,7 @@ class Command:
     pass
 
 @dataclass
-class AnylizeUserQuery(Command):
+class AnalyzeUserQuery(Command):
     event_id: UUID
     model: str
     ip_address: IPv4Address

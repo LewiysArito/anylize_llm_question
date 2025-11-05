@@ -1,7 +1,7 @@
 import asyncio
 from clickhouse_connect.driver.asyncclient import AsyncClient
 from analyze_user_query.clickhouse_helper import Table
-from analyze_user_query.adapters.orm import analize_user_llm_query
+from analyze_user_query.adapters.orm import analyze_user_llm_query
 from analyze_user_query.adapters.repository import get_async_client
 
 async def create_table(client: AsyncClient, table: Table) -> None:
@@ -16,7 +16,7 @@ async def main():
     client = None
     try:
         client = await get_async_client()
-        await init_tables_clickhouse_if_not_exists(client, tables=[analize_user_llm_query])
+        await init_tables_clickhouse_if_not_exists(client, tables=[analyze_user_llm_query])
     except Exception as e:
         raise
     finally:

@@ -4,9 +4,7 @@ from starlette.status import (
     HTTP_500_INTERNAL_SERVER_ERROR,
     HTTP_200_OK
 )
-from fastapi import FastAPI, HTTPException, Request
-import dataclasses
-import uuid
+from fastapi import FastAPI
 
 from analyze_user_query import bootstrap
 

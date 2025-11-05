@@ -1,12 +1,11 @@
 import abc
-import logging
 import clickhouse_connect as ch
 
 from uuid import UUID
 from clickhouse_connect.driver.asyncclient import AsyncClient
 from typing import List, Optional
 from analyze_user_query.domain import model
-from analyze_user_query.adapters.orm import analize_user_llm_query_mapper
+from analyze_user_query.adapters.orm import analyze_user_llm_query_mapper
 from analyze_user_query.config import get_clickhouse_settings
 
 CLICKHOUSE_HOST = str(get_clickhouse_settings().get("CLICKHOUSE_HOST"))
@@ -47,7 +46,7 @@ class AbstractColumnRepository(abc.ABC):
         raise NotImplementedError
     
 class ClickhouseRepository(AbstractColumnRepository):
-    async def __init__(self, session: AsyncClient, mapper = analize_user_llm_query_mapper):
+    async def __init__(self, session: AsyncClient, mapper = analyze_user_llm_query_mapper):
         if not session:
             session = await get_async_client()
         

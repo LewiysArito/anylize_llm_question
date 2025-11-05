@@ -38,14 +38,14 @@ class AbstractEventConsumer(abc.ABC):
         raise NotImplementedError
 
 class KafkaConsumer(AbstractEventConsumer):
-    def __init__(self, topics: List[str] = ["llm_anylize"], bootstrap_servers = DEFAULT_BASE_URL, bus = bus):
+    def __init__(self, topics: List[str] = ["llm_analyze"], bootstrap_servers = DEFAULT_BASE_URL, bus = bus):
         self.consumer: Optional[AIOKafkaConsumer] = None
         self.bootstrap_servers = bootstrap_servers
         self.topics = topics
         self.bus = bus
 
     async def handle_user_query_for_analytics(self, data_user_query: DataUserQuery):
-        cmd = commands.AnylizeUserQuery(asdict(data_user_query))
+        cmd = commands.AnalyzeUserQuery(asdict(data_user_query))
         self.bus.handle(cmd)        
 
     async def main(self):
@@ -61,7 +61,7 @@ class KafkaConsumer(AbstractEventConsumer):
                     timestamp=datetime.strptime(message["timestamp"], "%Y-%m-%d %H:%M:%S"),
                     **message
                 )
-                await self.handle_user_query_for_analytics(data_user_query, bus)
+                await self.handle_user_query_for_analytics(data_user_query)
 
         except KafkaError:
             logger.exception(f"Kafka error {e}")
