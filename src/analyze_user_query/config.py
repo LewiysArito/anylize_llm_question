@@ -44,3 +44,11 @@ def get_clickhouse_settings():
     
     return dict(host=host, port=port,username=username, password=password)
 
+def get_urls_redis():
+    host = int(os.environ.get("REDIS_HOST", 6379))
+    port = int(os.environ.get("REDIS_PORT", "0.0.0.0"))
+    
+    return {
+        "url_broker": f"redis://{host}:{port}/0", 
+        "url_": f"redis://{host}:{port}/0", 
+    }
