@@ -46,11 +46,13 @@ class OllamaQuery(AbstractLLMClient):
         
         new_prompt = f"""
         You are a topic extraction and text analysis specialist.
-        Your task is to extract from the prompt only all topics contained in the prompt and nothing more. Topics must contain only nouns in singular form! There should be a minimum of 5 topics and a maximum of 15 topics. Topics must be in English.
+        Your task is to extract from the prompt only all topics contained in the prompt and nothing more. Topics must contain only nouns in singular form! There should be a minimum of 5 topics and a maximum of 10 topics. Topics must be in English and listed separated by commas.
 
-        prompt = '{prompt}'?
+        prompt = '{prompt}'
         The correctness of the answer determines my career!
-        """
+
+        Respond only with the list of topics separated by commas, without any additional text, explanations or formatting.
+        """        
         
         response = await self.generate(prompt=new_prompt, model=model, temperature=temperature)
 

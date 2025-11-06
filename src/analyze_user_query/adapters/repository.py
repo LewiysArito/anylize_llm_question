@@ -6,15 +6,15 @@ from clickhouse_connect.driver.asyncclient import AsyncClient
 from typing import List, Optional
 from analyze_user_query.domain import model
 from analyze_user_query.adapters.orm import analyze_user_llm_query_mapper
-from analyze_user_query.config import get_clickhouse_settings
+from analyze_user_query import config
 
-CLICKHOUSE_HOST = str(get_clickhouse_settings().get("CLICKHOUSE_HOST"))
-CLICKHOUSE_PORT = int(get_clickhouse_settings().get("CLICKHOUSE_PORT"))
-CLICKHOUSE_PASSWORD = str(get_clickhouse_settings().get("CLICKHOUSE_PASSWORD"))
-CLICKHOUSE_USERNAME = str(get_clickhouse_settings().get("CLICKHOUSE_USERNAME"))
+DEFAULT_CLICKHOUSE_HOST = str(config.get_clickhouse_settings().get("host"))
+DEFAULT_CLICKHOUSE_PORT = int(config.get_clickhouse_settings().get("port"))
+DEFAULT_CLICKHOUSE_PASSWORD = str(config.get_clickhouse_settings().get("password"))
+DEFAULT_CLICKHOUSE_USERNAME = str(config.get_clickhouse_settings().get("username"))
 
-async def get_async_client(host=CLICKHOUSE_HOST, port=CLICKHOUSE_PORT,
-    password=CLICKHOUSE_PASSWORD, username=CLICKHOUSE_USERNAME)->AsyncClient:
+async def get_async_client(host=DEFAULT_CLICKHOUSE_HOST, port=DEFAULT_CLICKHOUSE_PORT,
+    password=DEFAULT_CLICKHOUSE_PASSWORD, username=DEFAULT_CLICKHOUSE_USERNAME)->AsyncClient:
     client = await ch.get_async_client(
         host = host,
         port = port,
