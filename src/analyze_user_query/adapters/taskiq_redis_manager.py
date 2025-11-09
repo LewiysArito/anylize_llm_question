@@ -2,9 +2,13 @@ import json
 import logging
 import abc
 import time
-from typing import Any, Dict
-from taskiq_redis import RedisAsyncResultBackend, RedisStreamBroker
+
+from typing import Any, Dict, Optional
+from uuid import UUID
+import uuid
+from taskiq.kicker import AsyncKicker
 from taskiq import TaskiqResult
+from taskiq_redis import RedisAsyncResultBackend, RedisStreamBroker
 
 from analyze_user_query import config
 
@@ -25,6 +29,10 @@ class AbstractRedisTaskManager(abc.ABC):
     
     @abc.abstractmethod
     def get_broker(self) -> RedisStreamBroker:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def run_task_by_name(self, task_name: str, task_id: Optional[UUID]=None, kwargs = {}) -> Any:
         raise NotImplementedError
 
 class TaskIqRedisTaskManager(AbstractRedisTaskManager):
@@ -97,7 +105,21 @@ class TaskIqRedisTaskManager(AbstractRedisTaskManager):
 
     def get_broker(self) -> RedisStreamBroker:
         return self.broker
-
+        
+    async def run_task_by_name(self, task_name: str, task_id: Optional[UUID]=None, kwargs = {}) -> Any:
+        await self.broker.startup()
+        async_kicker = AsyncKicker(task_name, self.broker, labels={})
+        
+        if not task_id:
+          task_id = uuid.uuid4()
+        
+        async_kicker.custom_task_id = task_id
+        taskiq = await async_kicker.kiq(**kwargs)
+        
+        result = await taskiq.wait_result()
+        await self.broker.shutdown()
+        return result.return_value
+    
     @property
     def is_running(self) -> bool:
         return self._is_running
