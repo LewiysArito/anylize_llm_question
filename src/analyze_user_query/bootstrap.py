@@ -5,12 +5,14 @@ from analyze_user_query.adapters.http_ip_geolocation import AbstractIpGeolocatio
 from analyze_user_query.adapters.ollama import AbstractLLMClient, OllamaQuery
 from analyze_user_query.adapters.repository import AbstractColumnRepository, ClickhouseRepository
 from analyze_user_query.adapters.language_detect import AbstractFtlangDetect, FtlangDetect
+from analyze_user_query.adapters.taskiq_redis_manager import AbstractRedisTaskManager, TaskIqRedisTaskManager
 
 def bootstrap(
     ip_geolocation: AbstractIpGeolocation = None,
     llm: AbstractLLMClient = None,
     repo: AbstractColumnRepository = None,
-    language_detect: AbstractFtlangDetect = None
+    language_detect: AbstractFtlangDetect = None,
+    redis_task_manager: AbstractRedisTaskManager = None
 ) -> Tuple[messagebus.AsyncMessageBus, query_dispatcher.AsyncQueryDispatcher]:
 
     if ip_geolocation is None:
@@ -25,11 +27,15 @@ def bootstrap(
     if language_detect is None:
         language_detect = FtlangDetect()
 
+    if redis_task_manager is None:
+        redis_task_manager = TaskIqRedisTaskManager()
+
     dependencies = {
         "repo": repo,
         "ip_geolocation": ip_geolocation,
         "llm": llm,
-        "language_detect": language_detect
+        "language_detect": language_detect,
+        "redis_task_manager" : redis_task_manager
     }
     
     injected_event_handlers = {
