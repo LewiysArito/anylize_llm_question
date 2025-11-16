@@ -1,5 +1,4 @@
 import json
-import logging
 import abc
 import time
 
@@ -14,9 +13,7 @@ from analyze_user_query import config
 
 DEFAULT_URL_BROKER = config.get_urls_redis().get("url_broker")
 DEFAULT_URL_BACKEND_RESULT= config.get_urls_redis().get("url_backend_result")
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = config.logger
 
 class AbstractRedisTaskManager(abc.ABC):
     @abc.abstractmethod

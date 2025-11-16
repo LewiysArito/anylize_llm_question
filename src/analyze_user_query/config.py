@@ -1,6 +1,9 @@
+import logging
 import os
+from dotenv import load_dotenv
 from analyze_user_query.helpers import convert_env_value_to_bool
 
+load_dotenv()
 class ConfigError(Exception):
     pass
 
@@ -39,16 +42,43 @@ def get_llm_url_and_max_token():
 def get_clickhouse_settings():
     host = os.environ.get("CLICKHOUSE_HOST", "localhost")
     port = int(os.environ.get("CLICKHOUSE_PORT", 8123))
-    username = os.environ.get("CLICKHOUSE_USERNAME", "clickhouse_user")
-    password = os.environ.get("CLICKHOUSE_PASSWORD", "clickhouse_password")
-    
+    username = os.environ.get("CLICKHOUSE_USERNAME", "default")
+    password = os.environ.get("CLICKHOUSE_PASSWORD")
     return dict(host=host, port=port,username=username, password=password)
 
 def get_urls_redis():
-    host = int(os.environ.get("REDIS_HOST", 6379))
-    port = int(os.environ.get("REDIS_PORT", "0.0.0.0"))
+    host = os.environ.get("REDIS_HOST", "0.0.0.0")
+    port = int(os.environ.get("REDIS_PORT", 6379))
     
     return {
         "url_broker": f"redis://{host}:{port}/0", 
-        "url_": f"redis://{host}:{port}/0", 
+        "url_backend_result": f"redis://{host}:{port}/0", 
     }
+
+def get_logger()->logging.Logger:
+    
+    def off_loggers() -> None: 
+        logging.getLogger("httpx").setLevel(logging.WARNING)
+        logging.getLogger("httpcore").setLevel(logging.WARNING) 
+        logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
+        logging.getLogger("urllib3").setLevel(logging.WARNING)
+
+    LOG_LEVEL_NAME = os.getenv("LOG_LEVEL", "INFO").upper()
+    log_level = getattr(logging, LOG_LEVEL_NAME, logging.INFO)
+    
+    logging.basicConfig(
+        level=log_level,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler('./analyze_user_query.log', encoding='utf-8')
+        ]
+    )
+
+    off_loggers()
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"Logger initialized with level: {LOG_LEVEL_NAME}")
+    return logger
+
+logger = get_logger()

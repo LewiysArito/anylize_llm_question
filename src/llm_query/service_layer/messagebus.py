@@ -1,10 +1,11 @@
 # pylint: disable=broad-except, attribute-defined-outside-init
 from __future__ import annotations
-import logging
 from typing import Callable, Dict, List, Union, Type
+
+from llm_query import config
 from llm_query.domain import commands, events
 
-logger = logging.getLogger(__name__)
+logger = config.logger
 Message = Union[commands.Command, events.Event]
 
 class AsyncMessageBus:
@@ -33,7 +34,7 @@ class AsyncMessageBus:
                 logger.debug(f"handling event {event} with handler {handler}")
                 await handler(event)
             except Exception:
-                logger.exception(f"Exception handling event {event}")
+                logger.error(f"Exception handling event {event}")
                 continue
 
     async def handle_command(self, command: commands.Command):
@@ -42,5 +43,5 @@ class AsyncMessageBus:
             handler = self.command_handlers[type(command)]
             await handler(command)
         except Exception:
-            logger.exception(f"Exception handling command {command}")
+            logger.error(f"Exception handling command {command}")
             raise

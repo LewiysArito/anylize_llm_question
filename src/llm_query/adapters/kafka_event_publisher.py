@@ -1,10 +1,9 @@
 import json
 import abc
-import logging
-from typing import List, Optional
 import uuid
 import asyncio
 
+from typing import List, Optional
 from dataclasses import asdict
 from aiokafka import AIOKafkaProducer
 from aiokafka.errors import KafkaError
@@ -12,7 +11,7 @@ from llm_query import config
 from llm_query.adapters import integration_events as int_event
 
 DEFAULT_BASE_URL = config.get_kafka_url()
-logger = logging.getLogger(__name__)
+logger = config.logger
 
 class AbstractPublisher(abc.ABC):
     @abc.abstractmethod

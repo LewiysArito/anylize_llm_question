@@ -6,6 +6,7 @@ from ollama import AsyncClient
 
 DEFAULT_BASE_URL = config.get_llm_url_and_max_token()["base_url"]
 DEFAULT_MAX_TOKENS = config.get_llm_url_and_max_token()["max_tokens"]
+logger = config.logger
 
 class LLMQueryError(Exception):
     pass
@@ -45,13 +46,15 @@ class OllamaQuery(AbstractLLMClient):
             )
             return response["response"]
         except Exception as e:
-            raise LLMQueryError(f"Failed to generate completion: {e}") from e
+            error = f"Failed to generate completion: {e}"
+            logger.error(error)
+            raise LLMQueryError(error)
         
     async def generate_with_stream(self, prompt: str, model: str, temperature: float = 0.7)->AsyncGenerator[str, None]:
         try:
             async for chunk in await self.client.generate(
                 model=model,
-                    prompt=prompt,ß
+                    prompt=prompt,
                     options={
                         "temperature": temperature,
                         "num_predict": self.max_tokens
@@ -60,5 +63,7 @@ class OllamaQuery(AbstractLLMClient):
                 ):
                     yield chunk["response"]
         except Exception as e:
-            raise LLMQueryError(f"Failed to stream completion: {e}") from e
+            error = f"Failed to stream completion: {e}"
+            logger.error(error)
+            raise LLMQueryError(error)
         

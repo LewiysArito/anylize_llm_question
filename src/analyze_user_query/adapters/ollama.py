@@ -1,10 +1,11 @@
 import abc
-from typing import Any, AsyncGenerator, Dict, List
-from llm_query import config
+from typing import List
+from analyze_user_query import config
 from ollama import AsyncClient
 
 DEFAULT_BASE_URL = config.get_llm_url_and_max_token()["base_url"]
 DEFAULT_MAX_TOKENS = config.get_llm_url_and_max_token()["max_tokens"]
+logger = config.logger
 
 class LLMQueryError(Exception):
     pass
@@ -19,7 +20,7 @@ class AbstractLLMClient(abc.ABC):
         raise NotImplementedError
     
     @abc.abstractmethod
-    async def get_themes_by_query(self, prompt: str, model: str, temperature: float):
+    async def get_themes_by_query(self, prompt: str, model: str, temperature: float)->List[str]:
         raise NotImplementedError
     
 class OllamaQuery(AbstractLLMClient):
@@ -40,7 +41,9 @@ class OllamaQuery(AbstractLLMClient):
             )
             return response["response"]
         except Exception as e:
-            raise LLMQueryError(f"Failed to generate completion: {e}") from e  
+            error = f"Failed to generate completion: {e}"
+            logger.error(error)
+            raise LLMQueryError(error)
     
     async def get_themes_by_query(self, prompt: str, model: str, temperature: float)->List[str]:
         

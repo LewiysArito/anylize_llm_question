@@ -1,11 +1,12 @@
 import abc
-import logging
 import geocoder
 import asyncio
+
 from typing import Any, Dict, Optional
 from countryinfo import CountryInfo
+from analyze_user_query import config
 
-logger = logging.getLogger(__name__)
+logger = config.logger
 
 class AbstractIpGeolocation(abc.ABC):
 

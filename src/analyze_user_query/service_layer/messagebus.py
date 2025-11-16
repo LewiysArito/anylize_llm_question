@@ -33,7 +33,7 @@ class AsyncMessageBus:
                 logger.debug(f"handling event {event} with handler {handler}")
                 await handler(event)
             except Exception:
-                logger.exception(f"Exception handling event {event}")
+                logger.error(f"Exception handling event {event}")
                 continue
 
     async def handle_command(self, command: commands.Command):
@@ -42,5 +42,5 @@ class AsyncMessageBus:
             handler = self.command_handlers[type(command)]
             await handler(command)
         except Exception:
-            logger.exception(f"Exception handling command {command}")
+            logger.error(f"Exception handling command {command}")
             raise
