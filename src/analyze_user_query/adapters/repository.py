@@ -1,4 +1,5 @@
 import abc
+import asyncio
 import clickhouse_connect as ch
 
 from uuid import UUID
@@ -26,43 +27,43 @@ async def get_async_client(host=DEFAULT_CLICKHOUSE_HOST, port=DEFAULT_CLICKHOUSE
 class AbstractColumnRepository(abc.ABC):
 
     @abc.abstractmethod
-    async def add(self, analytic: model.AnalyzedUserQuery) -> None:
+    async def add(self, analytic: model.AnalyzedUserQueryOrm) -> None:
         raise NotImplementedError
     
     @abc.abstractmethod
-    async def adds(self, analytics: List[model.AnalyzedUserQuery]) -> None:
+    async def adds(self, analytics: List[model.AnalyzedUserQueryOrm]) -> None:
         raise NotImplementedError
         
     @abc.abstractmethod
-    async def get_by_event_id(self, id: UUID) -> Optional[model.AnalyzedUserQuery]:
+    async def get_by_event_id(self, id: UUID) -> Optional[model.AnalyzedUserQueryOrm]:
         raise NotImplementedError
         
     @abc.abstractmethod
-    async def get_by_user_id(self, user_ip: int, limit: int = 100) -> List[model.AnalyzedUserQuery]:
+    async def get_by_user_id(self, user_ip: int, limit: int = 100) -> List[model.AnalyzedUserQueryOrm]:
         raise NotImplementedError
     
     @abc.abstractmethod
-    async def get_by_country(self, country: str) -> List[model.AnalyzedUserQuery]:
+    async def get_by_country(self, country: str) -> List[model.AnalyzedUserQueryOrm]:
         raise NotImplementedError
     
 class ClickhouseRepository(AbstractColumnRepository):
-    async def __init__(self, session: AsyncClient, mapper = analyze_user_llm_query_mapper):
+    def __init__(self, session: Optional[AsyncClient] = None, mapper = analyze_user_llm_query_mapper):
         if not session:
-            session = await get_async_client()
+            session = asyncio.run(get_async_client())
         
         self.session = session
         self.mapper = mapper
     
-    async def add(self, analytic: model.AnalyzedUserQuery) -> None:
+    async def add(self, analytic: model.AnalyzedUserQueryOrm) -> None:
         values = self.mapper.model_to_tuple(analytic)
         columns_name = [column.name for column in self.mapper.table.columns]
         query = self.mapper.table.generate_sql_for_insert(
-            values,
+            [values],
             columns_name
         )
         await self.session.query(query)
 
-    async def adds(self, analytics: List[model.AnalyzedUserQuery]) -> None:
+    async def adds(self, analytics: List[model.AnalyzedUserQueryOrm]) -> None:
         values = self.mapper.models_to_tuples(analytics)
         columns_name = [column.name for column in self.mapper.table.columns]
         query = self.mapper.table.generate_sql_for_insert(
@@ -71,11 +72,11 @@ class ClickhouseRepository(AbstractColumnRepository):
         )
         await self.session.query(query)
         
-    async def get_by_event_id(self, id: UUID) -> Optional[model.AnalyzedUserQuery]:
+    async def get_by_event_id(self, id: UUID) -> Optional[model.AnalyzedUserQueryOrm]:
         pass
         
-    async def get_by_user_id(self, user_ip: int, limit: int = 100) -> List[model.AnalyzedUserQuery]:
+    async def get_by_user_id(self, user_ip: int, limit: int = 100) -> List[model.AnalyzedUserQueryOrm]:
         pass
     
-    async def get_by_country(self, country: str) -> List[model.AnalyzedUserQuery]:
+    async def get_by_country(self, country: str) -> List[model.AnalyzedUserQueryOrm]:
         pass

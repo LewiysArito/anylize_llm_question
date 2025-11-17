@@ -1,13 +1,13 @@
 from typing import Tuple
 from analyze_user_query.domain import model
-from src.analyze_user_query.clickhouse_helper import (
+from analyze_user_query.clickhouse_helper import (
     Array, Column, Date, EngineType, FixedString, Function, IPv4, Mapper, String, Table, UUID  
 )
 
 analyze_user_llm_query = Table(
     "analyze_user_llm_query",
     EngineType.MERGETREE, 
-    ["date", "country_code", "language_code", "model_llm"],
+    ["date", "language_code", "model_llm"],
     Function("toYYYYMM(date)"),
     None,
     Column("event_id", UUID(), False),
@@ -21,7 +21,7 @@ analyze_user_llm_query = Table(
 )
 
 def start_mappers() -> Tuple[Mapper, ...]:
-    analyze_user_llm_query_mapper = Mapper(model.AnalyzedUserQuery, analyze_user_llm_query)
+    analyze_user_llm_query_mapper = Mapper(model_cls=model.AnalyzedUserQueryOrm, table=analyze_user_llm_query)
     return (analyze_user_llm_query_mapper,)
 
 analyze_user_llm_query_mapper,  = start_mappers()
