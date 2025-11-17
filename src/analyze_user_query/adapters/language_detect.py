@@ -1,10 +1,10 @@
 import asyncio
 import abc
-from ftlangdetect import detect
+from fast_langdetect import detect_language
 
 class AbstractFtlangDetect(abc.ABC):
     @abc.abstractmethod
-    async def detect_language(self, text: str) -> str:
+    async def definition_language(self, text: str) -> str:
         raise NotImplementedError
 
 class FtlangDetect(AbstractFtlangDetect):
@@ -12,6 +12,5 @@ class FtlangDetect(AbstractFtlangDetect):
         pass
     
     async def definition_language(self, text: str)->str:
-        code_country = await asyncio.to_thread(detect, text)["lang"]
-        return code_country.upper()
-        
+        code_country = await asyncio.to_thread(detect_language, text)
+        return code_country

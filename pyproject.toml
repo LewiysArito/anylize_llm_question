@@ -21,8 +21,9 @@ dependencies = [
     "countryinfo (>=0.1.2,<0.2.0)",
     "mediapipe (>=0.10.21,<0.11.0)",
     "taskiq-aio-kafka (>=0.2.2,<0.3.0)",
-    "fasttext-langdetect (>=1.0.5,<2.0.0)",
-    "taskiq-redis (>=1.1.2,<2.0.0)"
+    "taskiq-redis (>=1.1.2,<2.0.0)",
+    "fast-langdetect (>=1.0.0,<2.0.0)",
+    "fasttext (>=0.9.3,<0.10.0)"
 ]
 
 [build-system]
