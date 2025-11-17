@@ -66,9 +66,26 @@ def bootstrap(
 
 def inject_dependencies(handler, dependencies):
     params = inspect.signature(handler).parameters
-    deps = {
-        name: dependency
-        for name, dependency in dependencies.items()
-        if name in params
-    }
-    return lambda message: handler(message, **deps)
+    
+    param_names = list(params.keys())
+    if param_names:
+        main_param = param_names[0]
+        dep_params = param_names[1:]
+    else:
+        dep_params = []
+    
+    deps = {}
+    for dep_name in dep_params:
+        if dep_name in dependencies:
+            deps[dep_name] = dependencies[dep_name]
+        else:
+            raise Exception(f"Warning: Dependency '{dep_name}' not found for {handler.__name__}")
+    
+    if inspect.iscoroutinefunction(handler):
+        async def injected_handler(message):
+            return await handler(message, **deps)
+    else:
+        def injected_handler(message):
+            return handler(message, **deps)
+            
+    return injected_handler
