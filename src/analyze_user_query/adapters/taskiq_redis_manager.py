@@ -110,7 +110,7 @@ class TaskIqRedisTaskManager(AbstractRedisTaskManager):
         if not task_id:
           task_id = uuid.uuid4()
         
-        async_kicker.custom_task_id = task_id
+        async_kicker.custom_task_id = str(task_id)
         taskiq = await async_kicker.kiq(**kwargs)
         
         result = await taskiq.wait_result()

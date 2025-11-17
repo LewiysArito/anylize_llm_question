@@ -28,7 +28,7 @@ def get_kafka_url():
 def get_llm_url_and_max_token():
     host = os.environ.get("LLAMA_HOST", "localhost")
     port = os.environ.get("LLAMA_PORT", 11434)
-    max_tokens = os.environ.get("LLM_MAX_TOKENS", 1000)
+    max_tokens = int(os.environ.get("LLM_MAX_TOKENS", 1000))
 
     value = os.environ.get("LLM_SECURE", False)
     try:

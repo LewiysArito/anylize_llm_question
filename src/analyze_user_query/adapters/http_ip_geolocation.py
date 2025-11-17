@@ -22,6 +22,9 @@ class IpInfoService(AbstractIpGeolocation):
     
     async def get_info_by_ip(self, ip: str) -> Dict[str, Any]:
         try:
+            if ip in ["localhost", "127.0.0.1", "0.0.0.0"]: 
+                logger.warning(f"Localost ip: {ip}")
+                return {}
             info = await asyncio.to_thread(geocoder.ip, ip)
             if not info or not info.ok:
                 logger.warning(f"No data found for IP: {ip}")

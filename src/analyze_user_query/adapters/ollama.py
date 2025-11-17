@@ -20,7 +20,7 @@ class AbstractLLMClient(abc.ABC):
         raise NotImplementedError
     
     @abc.abstractmethod
-    async def get_themes_by_query(self, prompt: str, model: str, temperature: float)->List[str]:
+    async def get_themes_by_query(self, prompt: str, model: str, temperature: float = 0.7)->List[str]:
         raise NotImplementedError
     
 class OllamaQuery(AbstractLLMClient):
@@ -45,7 +45,7 @@ class OllamaQuery(AbstractLLMClient):
             logger.error(error)
             raise LLMQueryError(error)
     
-    async def get_themes_by_query(self, prompt: str, model: str, temperature: float)->List[str]:
+    async def get_themes_by_query(self, prompt: str, model: str, temperature: float = 0.7)->List[str]:
         
         new_prompt = f"""
         You are a topic extraction and text analysis specialist.
