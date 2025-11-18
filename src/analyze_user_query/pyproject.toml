@@ -1,0 +1,28 @@
+[project]
+name = "analyze-user-query"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "LewiysArito",email = "nikita.kasimov.1044@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.12,<4.0"
+dependencies = [
+    "aiohttp (>=3.13.2,<4.0.0)",
+    "asyncio (>=4.0.0,<5.0.0)",
+    "fastapi (>=0.121.2,<0.122.0)",
+    "python-dotenv (>=1.2.1,<2.0.0)",
+    "aiokafka (>=0.12.0,<0.13.0)",
+    "pytest (>=9.0.1,<10.0.0)",
+    "clickhouse-connect (>=0.8.18,<0.9.0) ; python_version >= \"3.8\"",
+    "ollama (>=0.6.1,<0.7.0)",
+    "geocoder (>=1.38.1,<2.0.0)",
+    "taskiq-redis (>=1.1.2,<2.0.0)",
+    "fast-langdetect (>=1.0.0,<2.0.0)",
+    "fasttext (>=0.9.3,<0.10.0)",
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
