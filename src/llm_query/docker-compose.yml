@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  api-llm-query:
+    build:
+      context: ./src/llm_query
+      dockerfile: Dockerfile
+    command: >
+      uvicorn llm_query.entrypoints.fast_api:app 
+      --reload 
+      --host 0.0.0.0 
+      --port 8000
+    env_file:
+      - ./src/llm_query/.env
+    container_name: api-llm-query
+    ports:
+      - "${API_PORT:-8000}:8000"
+    networks:
+      - analize_llm_question
+    depends_on:
+      - kafka
+      - ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
