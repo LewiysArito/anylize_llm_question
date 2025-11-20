@@ -421,6 +421,15 @@ def test_generate_insert_invalid_columns_count(values,columns, sample_analyze_us
         None, None, None, None,
         "SELECT * FROM analyze_user_llm_query WHERE language_code IN ['ru', 'en']"
     ),
+    (
+        [(Function("arrayJoin(themes)"), "theme"), (Function("count(*)"), "count")],
+        None,
+        ["theme"],
+        None,
+        [("count", SortOrder.DESC)],
+        100,
+        "SELECT arrayJoin(themes) as theme, count(*) as count FROM analyze_user_llm_query GROUP BY theme ORDER BY count DESC LIMIT 100"
+    ),
     (None, None, None, None, ["date"], 1, "SELECT * FROM analyze_user_llm_query ORDER BY date LIMIT 1"),
 ])
 def test_generate_select(columns, where, group_by, having, order_by, limit, sql_string, sample_analyze_user_llm_query_table): 
