@@ -8,6 +8,8 @@ T = TypeVar("T")
 class ColumnType:
     pass
 
+
+
 class EngineType(enum.Enum):
     MERGETREE = "MergeTree"
     REPLACING_MERGERTREE = "ReplacingMergeTree"
@@ -20,6 +22,10 @@ class EngineType(enum.Enum):
     STRIPE_LOG = "StripeLog"
     LOG = "Log"
     MEMORY = "Memory"
+
+class SortOrder(enum.Enum):
+    ASC = "ASC"
+    DESC = "DESC"
 
 class Integer(ColumnType):
     INTEGER_BITS = [8, 16, 32, 64, 128, 256]
@@ -236,7 +242,7 @@ class Table:
     def __init__(self, 
         table_name: str,
         engine: EngineType = EngineType.MERGETREE,
-        order_by: Optional[Union[str, List[str]]] = None,
+        order_by: Optional[List[str | Tuple[str, SortOrder]]] = None,
         partition_by: Optional[Union[str|Function]] = None,
         primary_key: Optional[Union[str, List[str]]] = None,
         *columns: Column
@@ -287,14 +293,15 @@ class Table:
 
             if not any(name == text for name in [column.name for column in self.columns]):
                 raise ValueError(f"Partition by column '{text}' cannot be used") 
-
+            
         if self.order_by:
-            order_by = [self.order_by] if isinstance(self.order_by, str) else self.order_by
+            order_by = [self.order_by] if isinstance(self.order_by, tuple) else self.order_by
 
             for order_col in order_by:
-                if not self._columns_dict.get(order_col):
-                    raise ValueError(f"Order by column '{order_col}' not found in table columns")
-                
+                col_name = order_col[0] if isinstance(order_col, tuple) else order_col
+                if not self._columns_dict.get(col_name):
+                    raise ValueError(f"Order by column '{col_name}' not found in table columns")
+
     def _validate_primary_key_order_by_relation(self):
         if not self.primary_key or not self.order_by:
             return
@@ -334,11 +341,14 @@ class Table:
             else:
                 query += f"\nPRIMARY KEY {self.primary_key}"
 
-        if isinstance(self.order_by, list): 
-            query += f"\nORDER BY ({', '.join(self.order_by)})"
-        else:
-            query += f"\nORDER BY {self.order_by}"
-        
+        if self.order_by:
+            order_by_text = [
+                f"{ob[0]} {ob[1].value}" if isinstance(ob, tuple) and isinstance(ob[1], SortOrder)
+                else ob
+                for ob in self.order_by
+            ]
+            query += f"\nORDER BY ({', '.join(order_by_text)})"
+
         return query
     
     def generate_sql_for_insert(self, values: List[tuple], columns: Optional[List[str]] = None) -> str:
@@ -379,17 +389,21 @@ class Table:
         return " ".join(parsed_conditions)
 
     def generate_sql_for_select(self, 
-        columns: Optional[List[str]] = None,
+        columns: Optional[List[Tuple[str, str] | str]] = None,
         where: Optional[Union[List[Union[Tuple[str, str, Any], str]], str]] = None,
         group_by: Optional[List[str]] = None,
         having: Optional[Union[List[Union[Tuple[str, str, Any], str]], str]] = None, 
-        order_by: Optional[List[str]] = None,
+        order_by: Optional[List[str | Tuple[str, SortOrder]]] = None,
         limit: Optional[int] = None
     ) -> str:
     
         self._validate_select_parameters(columns, group_by, order_by, limit)
         
-        select_expr = '*' if not columns else ', '.join(columns)
+        select_columns = []
+        if columns:
+            select_columns = [column if isinstance(column, str) else f"{column[0]} as {column[1]}" for column in columns]
+        
+        select_expr = '*' if not select_columns else (', '.join(select_columns) ) 
         query = f"SELECT {select_expr} FROM {self.table_name}"
         
         if where:
@@ -404,35 +418,49 @@ class Table:
             query += f"\nHAVING {self._parse_conditions(having)}"
         
         if order_by:
-            order_expr = order_by[0] if len(order_by) == 1 else ', '.join(order_by)
-            query += f"\nORDER BY {order_expr}"
+            formatted = []
+            for it in order_by:
+                if isinstance(it, tuple):
+                    col, sort = it
+                    sort_str = sort.value if isinstance(sort, SortOrder) else sort
+                    formatted.append(f"{col} {sort_str}")
+                else:
+                    formatted.append(str(it))
+            query += f"\nORDER BY {', '.join(formatted)}"
     
         if limit is not None:
             query += f"\nLIMIT {limit}"
         
         return query
 
-    def _validate_select_parameters(self, columns: Optional[List[str]], 
+    def _validate_select_parameters(self, columns: Optional[List[str | Tuple[str, str]]], 
         group_by: Optional[List[str]],  
-        order_by: Optional[Union[str, List[str]]],
+        order_by: Optional[List[str | Tuple[str, SortOrder]]],
         limit: Optional[int]):
-        
+
         if columns:
             for col in columns:
-                if col not in self._columns_dict:
+                if isinstance(col, str) and col not in self._columns_dict:
                     raise ValueError(f"Column '{col}' not found in table '{self.table_name}'")
-        
+                elif isinstance(col, tuple) and col[0] not in self._columns_dict:
+                    raise ValueError(f"Column '{col}' not found in table '{self.table_name}'")
+
         if group_by:
             for col in group_by:
-                if col not in self._columns_dict:
+                column_names = [column[1] if isinstance(column, tuple) else column 
+                    for column in columns] if columns else []
+                
+                if col not in self._columns_dict and col not in column_names:
                     raise ValueError(f"Group by column '{col}' not found in table '{self.table_name}'")
 
         if order_by:
-            columns_to_check = [order_by] if isinstance(order_by, str) else order_by
-            for col in columns_to_check:
-                if col not in self._columns_dict:
-                    raise ValueError(f"Order by column '{col}' not found in table '{self.table_name}'")
-        
+            order_items = [order_by_elem if isinstance(order_by_elem, str) else order_by_elem[0] for order_by_elem in order_by]
+            column_names = [column[1] if isinstance(column, tuple) else column 
+                for column in columns] if columns else []
+            for order_item in order_items:
+                if order_item not in self._columns_dict and order_item not in column_names: 
+                    raise ValueError(f"Order by column '{order_item}' not found in table '{self.table_name}'")  
+                
         if limit is not None and limit < 0:
             raise ValueError("LIMIT cannot be negative")
 
@@ -449,8 +477,8 @@ class Mapper:
 
         if not self._mapping:
             raise ValueError(f"No overlapping fields between table '{table.table_name}' and model {model_cls.__name__}")
-
     def row_to_model(self, row: Tuple[Any, ...]) -> T:
+
         data = {}
         for i, col_name in enumerate(self._mapping):
             data[col_name] = row[i]
