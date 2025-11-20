@@ -190,7 +190,11 @@ class Function:
         function_name = match.group(1)
         args_str = match.group(2)
         
-        arguments = re.findall(r'[a-zA-Z_]\w*', args_str)
+        if re.fullmatch(r'\s*\*\s*', args_str.strip()):
+            arguments = ['*']
+        else:
+            arguments = re.findall(r'[a-zA-Z_]\w*', args_str)
+        
         
         return function_name, arguments
     
@@ -388,8 +392,8 @@ class Table:
                 raise ValueError("Invalid condition in WHERE OR HAVING clause")
         return " ".join(parsed_conditions)
 
-    def generate_sql_for_select(self, 
-        columns: Optional[List[Tuple[str, str] | str]] = None,
+    def generate_sql_for_select(self,
+        columns: Optional[List[Tuple[Union[str, Function], str] | Union[str, Function]]] = None,
         where: Optional[Union[List[Union[Tuple[str, str, Any], str]], str]] = None,
         group_by: Optional[List[str]] = None,
         having: Optional[Union[List[Union[Tuple[str, str, Any], str]], str]] = None, 
@@ -401,8 +405,17 @@ class Table:
         
         select_columns = []
         if columns:
-            select_columns = [column if isinstance(column, str) else f"{column[0]} as {column[1]}" for column in columns]
-        
+            for column in columns:
+                if isinstance(column, str):
+                    select_columns.append(column)
+                elif isinstance(column, Function):
+                    select_columns.append(column.value)
+                elif isinstance(column, tuple):
+                    column_value = column[0] if isinstance(column[0], str) else column[0].value
+                    select_columns.append(f"{column_value} as {column[1]}")
+                else:
+                    raise TypeError("Not Correct Type")
+
         select_expr = '*' if not select_columns else (', '.join(select_columns) ) 
         query = f"SELECT {select_expr} FROM {self.table_name}"
         
@@ -433,32 +446,39 @@ class Table:
         
         return query
 
-    def _validate_select_parameters(self, columns: Optional[List[str | Tuple[str, str]]], 
+    def _validate_select_parameters(
+        self, 
+        columns: Optional[List[Union[str, Function] | Tuple[Union[str, Function], str]]], 
         group_by: Optional[List[str]],  
         order_by: Optional[List[str | Tuple[str, SortOrder]]],
-        limit: Optional[int]):
-
+        limit: Optional[int]
+    ):
         if columns:
             for col in columns:
                 if isinstance(col, str) and col not in self._columns_dict:
                     raise ValueError(f"Column '{col}' not found in table '{self.table_name}'")
-                elif isinstance(col, tuple) and col[0] not in self._columns_dict:
+                elif isinstance(col, Function) and col.arguments[0] not in self._columns_dict:
                     raise ValueError(f"Column '{col}' not found in table '{self.table_name}'")
-
+                elif isinstance(col, tuple) and isinstance(col[0], str) and col[0] not in self._columns_dict:
+                    raise ValueError(f"Column '{col[0]}' not found in table '{self.table_name}'")
+                elif isinstance(col, tuple) and isinstance(col[0], Function) and \
+                    col[0].arguments[0] not in self._columns_dict and col[0].arguments[0] != "*":
+                    raise ValueError(f"Column '{col[0] if isinstance(col[0], str) else col[0].arguments[0]}' not found in table '{self.table_name}'")
+                
         if group_by:
             for col in group_by:
-                column_names = [column[1] if isinstance(column, tuple) else column 
-                    for column in columns] if columns else []
+                alias_column_names = list(filter(lambda x: x is not None, [column[1] if isinstance(column, tuple) else None 
+                    for column in columns])) if columns else []
                 
-                if col not in self._columns_dict and col not in column_names:
+                if col not in self._columns_dict and col not in alias_column_names:
                     raise ValueError(f"Group by column '{col}' not found in table '{self.table_name}'")
 
         if order_by:
             order_items = [order_by_elem if isinstance(order_by_elem, str) else order_by_elem[0] for order_by_elem in order_by]
-            column_names = [column[1] if isinstance(column, tuple) else column 
-                for column in columns] if columns else []
+            alias_column_names = list(filter(lambda x: x is not None, [column[1] if isinstance(column, tuple) else None 
+                for column in columns])) if columns else []
             for order_item in order_items:
-                if order_item not in self._columns_dict and order_item not in column_names: 
+                if order_item not in self._columns_dict and order_item not in alias_column_names: 
                     raise ValueError(f"Order by column '{order_item}' not found in table '{self.table_name}'")  
                 
         if limit is not None and limit < 0:
