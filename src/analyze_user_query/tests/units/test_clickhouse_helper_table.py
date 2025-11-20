@@ -1,5 +1,5 @@
 import pytest
-from analyze_user_query.clickhouse_helper import (UUID, Array, Column, DateTime, FixedString, IPv4, Integer, String, Date, EngineType, Table, Function)
+from analyze_user_query.clickhouse_helper import (UUID, Array, Column, DateTime, FixedString, IPv4, Integer, SortOrder, String, Date, EngineType, Table, Function)
 from analyze_user_query.tests.units.confest import sample_analyze_user_llm_query_table
 
 @pytest.mark.parametrize("table_name,engine,order_by,partition_by,primary_key,columns,expected_sql_parts", [
@@ -176,7 +176,7 @@ def test_partition_by_not_found_between_column(partition_by):
         )
 
 @pytest.mark.parametrize("order_by", [
-    ("data"), 
+    (["data"]), 
     (["date", "country_code", "language"]),
 ])
 def test_order_by_not_found_between_column(order_by):
@@ -196,7 +196,7 @@ def test_order_by_not_found_between_column(order_by):
             Column("model_llm", String(), False)
         )
 @pytest.mark.parametrize("order_by,primary_key", [
-    ("date", ["date", "language_code"]),
+    (["date"], ["date", "language_code"]),
     (["date", "language_code"], ["date", "language_code", "model_llm"]),
 ]) 
 def test_len_order_by_column_less_then_primary_column(order_by, primary_key):
@@ -407,13 +407,13 @@ def test_generate_insert_invalid_columns_count(values,columns, sample_analyze_us
         "SELECT * FROM analyze_user_llm_query WHERE (date > '2025-01-01' AND country_code = 'US') OR (model_llm = 'gpt-4' OR model_llm = 'gemeni-3.1')"
     ),
     (
-        ["language_code", "model_llm"],
+        [("language_code", "lc"), "model_llm"],
         None,
         ["language_code"],
         [("model_llm", "=", "gpt-3.5")],
-        ["language_code"],
+        [("lc", SortOrder.ASC)],
         5,
-        "SELECT language_code, model_llm FROM analyze_user_llm_query GROUP BY language_code HAVING model_llm = 'gpt-3.5' ORDER BY language_code LIMIT 5"
+        "SELECT language_code as lc, model_llm FROM analyze_user_llm_query GROUP BY language_code HAVING model_llm = 'gpt-3.5' ORDER BY lc ASC LIMIT 5"
     ),
     (
         None,
@@ -455,7 +455,7 @@ def test_generate_select_group_by_col_not_exist(group_by, error_col, sample_anal
 
 @pytest.mark.parametrize("order_by,error_col", [
     (["data", "language_code"], "data"),
-    ("data", "data"),
+    (["data"], "data"),
 ])
 def test_generate_select_order_by_col_not_exist(order_by, error_col, sample_analyze_user_llm_query_table):
     table = sample_analyze_user_llm_query_table
